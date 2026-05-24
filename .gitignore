@@ -1,0 +1,31 @@
+# Variables d'environnement - JAMAIS commiter
+.env
+.env.local
+.env.*
+.env*.local
+!.env.example
+
+# Dépendances
+.git/
+.gitpush/
+node_modules/
+.npm-cache/
+.next/
+.next-waya/
+out/
+dist/
+*.tsbuildinfo
+*.log
+
+# Certificats et clés
+*.pem
+*.key
+*.cert
+*.p12
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Déploiement
+.vercel
