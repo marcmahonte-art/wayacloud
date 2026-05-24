@@ -1,11 +1,7 @@
 /** @type {import('postcss-load-config').Config} */
-const config = {
+export default {
   plugins: {
-    tailwindcss: {
-      config:
-        "C:/Users/Lenovo/Documents/Waya Cloud V2/wayacloud/tailwind.config.ts",
-    },
+    tailwindcss: {},
+    autoprefixer: {},
   },
 };
-
-export default config;
