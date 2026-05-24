@@ -5,9 +5,6 @@ const config: Config = {
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
     "./components/**/*.{js,ts,jsx,tsx,mdx}",
     "./lib/**/*.{js,ts,jsx,tsx,mdx}",
-    "C:/Users/Lenovo/Documents/Waya Cloud V2/wayacloud/app/**/*.{js,ts,jsx,tsx,mdx}",
-    "C:/Users/Lenovo/Documents/Waya Cloud V2/wayacloud/components/**/*.{js,ts,jsx,tsx,mdx}",
-    "C:/Users/Lenovo/Documents/Waya Cloud V2/wayacloud/lib/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
     extend: {
