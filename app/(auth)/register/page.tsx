@@ -3,17 +3,18 @@
 import { useEffect, useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Check, Loader2, Shield } from "lucide-react"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { AuthCard, AuthHeader } from "@/components/auth/AuthCard"
 import { AuthTabs } from "@/components/auth/AuthTabs"
 import { LoginForm } from "@/components/auth/LoginForm"
 import { AuthSeparator } from "@/components/auth/AuthSeparator"
 import { SocialAuth } from "@/components/auth/SocialAuth"
 import { useAuth } from "@/providers/AuthProvider"
-import { useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
 import type { AuthTab } from "@/lib/auth/types"
 
-export default function LoginPage() {
+export default function RegisterPage() {
   const router = useRouter()
   const { user, loading: authLoading } = useAuth()
 
@@ -39,17 +40,11 @@ export default function LoginPage() {
     }
   }
 
-  const handleOtpKeyDown = (index: number, e: React.KeyboardEvent) => {
-    if (e.key === "Backspace" && !otp[index] && index > 0) {
-      document.getElementById(`otp-${index - 1}`)?.focus()
-    }
-  }
-
   const handleOtpSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setOtpLoading(true)
     await new Promise((r) => setTimeout(r, 500))
-    setMessage("✅ Connexion réussie !")
+    setMessage("✅ Inscription réussie !")
     setOtpLoading(false)
     setTimeout(() => router.push("/dashboard"), 1000)
   }
@@ -88,21 +83,21 @@ export default function LoginPage() {
               transition={{ duration: 0.2 }}
             >
               <AuthHeader
-                title="Bienvenue sur WayaCloud"
-                subtitle="Connectez-vous à votre compte"
+                title="Créer un compte"
+                subtitle="Inscrivez-vous pour commencer"
               />
 
               <AuthTabs value={tab} onChange={setTab} />
-              <LoginForm tab={tab} mode="login" onOtpSent={() => setStep("otp")} />
+              <LoginForm tab={tab} mode="register" onOtpSent={() => setStep("otp")} />
 
               <AuthSeparator />
               <SocialAuth />
 
-              <p className="text-xs text-helper text-center mt-6">
-                En continuant, vous acceptez nos{" "}
-                <a href="#" className="text-primary hover:underline">
-                  conditions d&apos;utilisation
-                </a>
+              <p className="text-sm text-helper text-center mt-6">
+                Déjà un compte ?{" "}
+                <Link href="/login" className="text-primary hover:underline font-medium">
+                  Connectez-vous
+                </Link>
               </p>
             </motion.div>
           ) : (
@@ -121,9 +116,7 @@ export default function LoginPage() {
               <form onSubmit={handleOtpSubmit} className="space-y-6">
                 <div className="flex items-center justify-center gap-2">
                   <Shield size={16} className="text-primary" />
-                  <span className="text-sm text-gray">
-                    Code envoyé à {tab === "email" ? "votre email" : "votre téléphone"}
-                  </span>
+                  <span className="text-sm text-gray">Code envoyé</span>
                 </div>
 
                 <div className="flex justify-center gap-2">
@@ -135,7 +128,6 @@ export default function LoginPage() {
                       maxLength={1}
                       value={digit}
                       onChange={(e) => handleOtpChange(index, e.target.value)}
-                      onKeyDown={(e) => handleOtpKeyDown(index, e)}
                       className={cn(
                         "w-12 h-14 text-center text-lg font-semibold text-dark bg-white border border-border rounded-xl",
                         "focus:outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/10",
@@ -162,11 +154,7 @@ export default function LoginPage() {
                     "flex items-center justify-center gap-2"
                   )}
                 >
-                  {otpLoading ? (
-                    <Loader2 size={16} className="animate-spin" />
-                  ) : (
-                    <>Vérifier<Check size={16} /></>
-                  )}
+                  {otpLoading ? <Loader2 size={16} className="animate-spin" /> : <>Vérifier<Check size={16} /></>}
                 </button>
 
                 <div className="text-center">
