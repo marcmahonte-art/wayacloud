@@ -111,40 +111,34 @@ export async function signInWithEmailOtp(email: string): Promise<{ error?: AuthE
 }
 
 export async function signInWithGoogle(): Promise<{ error?: AuthError }> {
-  const { error } = await supabase.auth.signInWithOAuth({
+  const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
-    options: {
-      redirectTo: `${window.location.origin}/auth/callback`,
-    },
+    options: { redirectTo: `${window.location.origin}/auth/callback` },
   })
 
   if (error) {
-    return {
-      error: {
-        message: getAuthErrorMessage(error.message),
-      },
-    }
+    return { error: { message: getAuthErrorMessage(error.message) } }
   }
 
+  if (data?.url) {
+    window.location.href = data.url
+  }
   return {}
 }
 
 export async function signInWithFacebook(): Promise<{ error?: AuthError }> {
-  const { error } = await supabase.auth.signInWithOAuth({
+  const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "facebook",
-    options: {
-      redirectTo: `${window.location.origin}/auth/callback`,
-    },
+    options: { redirectTo: `${window.location.origin}/auth/callback` },
   })
 
   if (error) {
-    return {
-      error: {
-        message: getAuthErrorMessage(error.message),
-      },
-    }
+    return { error: { message: getAuthErrorMessage(error.message) } }
   }
 
+  if (data?.url) {
+    window.location.href = data.url
+  }
   return {}
 }
 
