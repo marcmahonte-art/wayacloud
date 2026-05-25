@@ -10,7 +10,7 @@ import { AuthSeparator } from "@/components/auth/AuthSeparator"
 import { SocialAuth } from "@/components/auth/SocialAuth"
 import { useAuth } from "@/providers/AuthProvider"
 
-export const dynamic = "force-dynamic";
+
 
 
 import { useRouter } from "next/navigation"

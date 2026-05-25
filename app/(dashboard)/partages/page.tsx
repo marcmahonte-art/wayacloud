@@ -1,6 +1,6 @@
 "use client";
 
-export const dynamic = "force-dynamic";
+
 
 import { Copy, FileImage, FileText, Link as LinkIcon, MoreVertical, Share2, StopCircle, User } from "lucide-react";
 
