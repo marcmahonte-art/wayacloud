@@ -15,7 +15,11 @@ export function SocialAuth() {
     setGoogleLoading(true)
     const { error } = await signInWithGoogle()
     if (error) {
-      toast.error(error.message)
+      if (error.message?.includes("not enabled") || error.message?.includes("Unsupported")) {
+        toast.error("Google n'est pas configuré. Configure-le dans Supabase Dashboard → Authentication → Providers → Google.")
+      } else {
+        toast.error(error.message)
+      }
     }
     setGoogleLoading(false)
   }
@@ -24,7 +28,11 @@ export function SocialAuth() {
     setFacebookLoading(true)
     const { error } = await signInWithFacebook()
     if (error) {
-      toast.error(error.message)
+      if (error.message?.includes("not enabled") || error.message?.includes("Unsupported")) {
+        toast.error("Facebook n'est pas configuré. Configure-le dans Supabase Dashboard → Authentication → Providers → Facebook.")
+      } else {
+        toast.error(error.message)
+      }
     }
     setFacebookLoading(false)
   }
