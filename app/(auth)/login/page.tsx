@@ -11,7 +11,7 @@ import { SocialAuth } from "@/components/auth/SocialAuth"
 import { useAuth } from "@/providers/AuthProvider"
 
 export const dynamic = "force-dynamic";
-export const revalidate = 0;
+
 
 import { useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"

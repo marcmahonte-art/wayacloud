@@ -1,5 +1,11 @@
 import type { Metadata } from "next";
+import { Jost } from "next/font/google";
 import "./globals.css";
+
+const jost = Jost({
+  subsets: ["latin"],
+  variable: "--font-jost",
+});
 import { Providers } from "./providers";
 
 export const metadata: Metadata = {
@@ -16,15 +22,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fr">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600;700;800&display=swap"
-          rel="stylesheet"
-        />
-      </head>
-      <body className="bg-background font-jost text-dark antialiased">
+      <body className={`${jost.variable} bg-background font-jost text-dark antialiased`}>
         <Providers>{children}</Providers>
       </body>
     </html>
