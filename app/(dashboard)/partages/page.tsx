@@ -1,6 +1,7 @@
 "use client";
 
-import { Copy, FileImage, FileText, Link as LinkIcon, MoreVertical, Share2, StopCircle, User } from "lucide-react";
+export const dynamic = "force-dynamic";
+export const revalidate = 0; { Copy, FileImage, FileText, Link as LinkIcon, MoreVertical, Share2, StopCircle, User } from "lucide-react";
 
 const sharedItems = [
   {
