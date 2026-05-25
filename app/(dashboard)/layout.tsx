@@ -18,6 +18,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { UploadButton } from "@/components/dashboard/UploadButton";
+import { useAuth } from "@/providers/AuthProvider";
 
 const navigation = [
   { href: "/dashboard", label: "Tableau de bord", icon: Home },
@@ -29,12 +30,39 @@ const navigation = [
   { href: "/corbeille", label: "Corbeille", icon: Trash2 },
 ];
 
+function getInitials(firstName?: string | null, lastName?: string | null, fullName?: string | null): string {
+  if (firstName && lastName) return `${firstName[0]}${lastName[0]}`.toUpperCase()
+  if (fullName) return fullName.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)
+  return "??"
+}
+
+function bytesToGo(bytes: number): string {
+  return (bytes / (1024 * 1024 * 1024)).toFixed(1)
+}
+
+function percentUsed(used: number, total: number): number {
+  if (total === 0) return 0
+  return Math.min(100, Math.round((used / total) * 100))
+}
+
 export default function DashboardLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   const pathname = usePathname();
+  const { profile, storageQuota, profileLoading } = useAuth();
+
+  const firstName = profile?.first_name || profile?.full_name?.split(" ")[0] || "Utilisateur"
+  const displayName = profile?.first_name && profile?.last_name
+    ? `${profile.first_name} ${profile.last_name}`
+    : profile?.full_name || "Utilisateur"
+  const userEmail = profile?.email || ""
+  const initials = getInitials(profile?.first_name, profile?.last_name, profile?.full_name)
+
+  const usedGo = storageQuota ? bytesToGo(storageQuota.storage_used_bytes) : "0"
+  const limitGo = storageQuota ? bytesToGo(storageQuota.storage_limit_bytes) : "20"
+  const usagePercent = storageQuota ? percentUsed(storageQuota.storage_used_bytes, storageQuota.storage_limit_bytes) : 0
 
   return (
     <div className="min-h-screen bg-[#FBFAF8] text-dark">
@@ -76,12 +104,12 @@ export default function DashboardLayout({
               Espace utilisé
             </p>
             <div className="mt-4 flex items-center justify-between text-sm font-bold">
-              <span>12.4 Go / 20 Go</span>
+              <span>{usedGo} Go / {limitGo} Go</span>
             </div>
             <div className="mt-3 h-2 rounded-pill bg-[#EFEAF6]">
-              <div className="h-full w-[62%] rounded-pill bg-primary" />
+              <div className="h-full rounded-pill bg-primary" style={{ width: `${usagePercent}%` }} />
             </div>
-            <p className="mt-3 text-xs font-medium text-[#69708A]">62% utilisé</p>
+            <p className="mt-3 text-xs font-medium text-[#69708A]">{usagePercent}% utilisé</p>
           </div>
 
           <div className="rounded-card border border-[#E8DCF8] bg-[#FAF6FF] p-5 shadow-card">
@@ -105,11 +133,11 @@ export default function DashboardLayout({
 
           <div className="mt-10 flex items-center gap-3">
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#FFE8D9] text-sm font-bold text-primary">
-              IT
+              {initials}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-bold text-dark">Issa Traoré</p>
-              <p className="truncate text-xs text-[#69708A]">issa@wayacloud.bf</p>
+              <p className="truncate text-sm font-bold text-dark">{displayName}</p>
+              <p className="truncate text-xs text-[#69708A]">{userEmail}</p>
             </div>
             <button className="rounded-btn p-2 text-[#69708A] hover:bg-background">
               <Plus size={18} />
@@ -123,7 +151,7 @@ export default function DashboardLayout({
           <div className="mx-auto flex max-w-[1560px] flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="min-w-0">
               <h1 className="text-2xl font-bold text-[#10142D]">
-                Bonjour, Issa !
+                Bonjour, {firstName} !
               </h1>
               <p className="mt-1 text-sm text-[#596077]">
                 Voici un aperçu complet de ton espace WayaCloud.

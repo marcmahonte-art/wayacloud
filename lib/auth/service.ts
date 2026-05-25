@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/client"
-import type { LoginInput, PhoneInput, AuthError } from "./types"
+import type { LoginInput, PhoneInput, OnboardingInput, AuthError } from "./types"
 
 const supabase = createClient()
 
@@ -29,6 +29,7 @@ export async function signUpWithEmail(input: LoginInput): Promise<{ error?: Auth
   const { error } = await supabase.auth.signUp({
     email,
     password,
+    options: { data: {} },
   })
 
   if (error) {
@@ -43,13 +44,44 @@ export async function signUpWithEmail(input: LoginInput): Promise<{ error?: Auth
   return {}
 }
 
+export async function signUpWithOnboarding(input: OnboardingInput): Promise<{
+  error?: AuthError
+  session: any | null
+}> {
+  const { error, data } = await supabase.auth.signUp({
+    email: input.email,
+    password: input.password,
+    options: {
+      data: {
+        first_name: input.first_name,
+        last_name: input.last_name,
+        city: input.city,
+        gender: input.gender,
+        phone: input.phone || null,
+      },
+    },
+  })
+
+  if (error) {
+    return {
+      error: {
+        message: getAuthErrorMessage(error.message),
+        code: error.code,
+      },
+      session: null,
+    }
+  }
+
+  return { session: data.session, error: undefined }
+}
+
 export async function signInWithPhone(input: PhoneInput): Promise<{ error?: AuthError }> {
   const { phone } = input
 
-  const { error } = await supabase.auth.signInWithOtp(
-    { phone },
-    { channel: "sms" }
-  )
+  const { error } = await supabase.auth.signInWithOtp({
+    phone,
+    options: { channel: "sms" },
+  })
 
   if (error) {
     return {

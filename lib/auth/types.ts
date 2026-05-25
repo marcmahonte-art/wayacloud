@@ -9,6 +9,16 @@ export interface PhoneInput {
   phone: string
 }
 
+export interface OnboardingInput {
+  email: string
+  password: string
+  first_name: string
+  last_name: string
+  city: string
+  gender: string
+  phone?: string
+}
+
 export interface AuthState {
   user: any | null
   session: any | null
@@ -18,4 +28,34 @@ export interface AuthState {
 export interface AuthError {
   message: string
   code?: string
+}
+
+export interface ProfileData {
+  id: string
+  email: string | null
+  first_name: string | null
+  last_name: string | null
+  full_name: string | null
+  phone: string | null
+  city: string | null
+  gender: string | null
+  role: string
+}
+
+export interface StorageQuota {
+  id: string
+  storage_limit_bytes: number
+  storage_used_bytes: number
+}
+
+export interface SubscriptionData {
+  id: string
+  plan_id: string
+  plan_name: string
+  plan_price: number
+  is_active: boolean
+  is_trial: boolean
+  starts_at: string
+  ends_at: string | null
+  trial_ends_at: string | null
 }

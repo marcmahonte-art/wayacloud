@@ -6,9 +6,10 @@ import { Button } from "@/components/ui/button"
 
 interface HeroProps {
   onAuthOpen: () => void
+  onGetStarted: () => void
 }
 
-export function Hero({ onAuthOpen }: HeroProps) {
+export function Hero({ onAuthOpen, onGetStarted }: HeroProps) {
   return (
     <section className="relative min-h-screen flex items-center overflow-hidden bg-gradient-to-b from-brand-tint via-background to-background">
       <div className="absolute inset-0 bg-grid opacity-30" />
@@ -44,7 +45,7 @@ export function Hero({ onAuthOpen }: HeroProps) {
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-              <Button size="xl" className="rounded-xl gap-2 group" onClick={onAuthOpen}>
+              <Button size="xl" className="rounded-xl gap-2 group" onClick={onGetStarted}>
                 Commencer gratuitement
                 <ArrowRight size={18} className="transition-transform duration-300 group-hover:translate-x-1" />
               </Button>

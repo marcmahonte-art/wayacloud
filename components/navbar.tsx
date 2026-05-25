@@ -15,9 +15,10 @@ const navLinks = [
 
 interface NavbarProps {
   onAuthOpen?: () => void
+  onGetStarted?: () => void
 }
 
-export function Navbar({ onAuthOpen }: NavbarProps) {
+export function Navbar({ onAuthOpen, onGetStarted }: NavbarProps) {
   const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
 
@@ -63,7 +64,7 @@ export function Navbar({ onAuthOpen }: NavbarProps) {
           <Button variant="ghost" size="sm" onClick={onAuthOpen}>
             Connexion
           </Button>
-          <Button size="sm" onClick={onAuthOpen}>
+          <Button size="sm" onClick={onGetStarted}>
             Commencer
           </Button>
         </div>
@@ -100,7 +101,7 @@ export function Navbar({ onAuthOpen }: NavbarProps) {
                 <Button variant="outline" className="w-full" onClick={onAuthOpen}>
                   Connexion
                 </Button>
-                <Button className="w-full" onClick={onAuthOpen}>
+                <Button className="w-full" onClick={onGetStarted}>
                   Commencer
                 </Button>
               </div>

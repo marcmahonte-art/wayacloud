@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/providers/AuthProvider";
 import {
   BarChart3,
   Bot,
@@ -154,10 +155,31 @@ const activity = [
   { label: "Abonnement renouvelé", detail: "Sauve WhatsApp 20 Go", time: "Il y a 2 h", icon: Crown, color: "text-primary" },
 ];
 
+function bytesToGo(bytes: number): string {
+  return (bytes / (1024 * 1024 * 1024)).toFixed(1)
+}
+
+function percentUsed(used: number, total: number): number {
+  if (total === 0) return 0
+  return Math.min(100, Math.round((used / total) * 100))
+}
+
 export default function DashboardPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
+  const { storageQuota, subscription, remainingTrialDays } = useAuth();
   const [isUploading, setIsUploading] = useState(false);
+
+  const usedGo = storageQuota ? bytesToGo(storageQuota.storage_used_bytes) : "0"
+  const limitGo = storageQuota ? bytesToGo(storageQuota.storage_limit_bytes) : "20"
+  const usagePercent = storageQuota ? percentUsed(storageQuota.storage_used_bytes, storageQuota.storage_limit_bytes) : 0
+  const remainingGo = storageQuota ? bytesToGo(storageQuota.storage_limit_bytes - storageQuota.storage_used_bytes) : "20"
+  const planName = subscription?.plan_name || "Gratuit"
+  const planPrice = subscription?.plan_price ? `${subscription.plan_price.toLocaleString("fr-FR")} F/mois` : ""
+  const renewalDate = subscription?.ends_at
+    ? new Date(subscription.ends_at).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })
+    : null
+  const isTrial = remainingTrialDays > 0
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -302,19 +324,19 @@ export default function DashboardPage() {
             <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0">
                 <p className="text-sm font-bold">Espace de stockage</p>
-                <p className="mt-5 text-4xl font-bold">{formatStorageGo(12.4)}</p>
-                <p className="mt-2 text-base font-semibold">sur 20 Go utilisés</p>
+                <p className="mt-5 text-4xl font-bold">{formatStorageGo(Number(usedGo))}</p>
+                <p className="mt-2 text-base font-semibold">sur {formatStorageGo(Number(limitGo))} utilisés</p>
               </div>
               <div className="relative flex h-28 w-28 shrink-0 items-center justify-center rounded-full border-[14px] border-white/30">
                 <div className="absolute inset-[-14px] rounded-full border-[14px] border-white border-l-white/30 border-t-white/30" />
-                <span className="relative text-xl font-bold">62%</span>
+                <span className="relative text-xl font-bold">{usagePercent}%</span>
               </div>
             </div>
             <div className="mt-6 h-1.5 rounded-pill bg-white/25">
-              <div className="h-full w-[62%] rounded-pill bg-white" />
+              <div className="h-full rounded-pill bg-white" style={{ width: `${usagePercent}%` }} />
             </div>
             <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
-              <p className="text-sm font-medium">7.6 Go disponibles</p>
+              <p className="text-sm font-medium">{remainingGo} Go disponibles</p>
               <button className="rounded-btn border border-white/50 px-4 py-2 text-sm font-semibold">
                 Voir les détails →
               </button>
@@ -327,12 +349,21 @@ export default function DashboardPage() {
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
                 <p className="text-sm font-bold text-dark">Plan actuel</p>
-                <p className="mt-4 text-xl font-bold">Sauve WhatsApp</p>
+                <p className="mt-4 text-xl font-bold">{planName}</p>
+                {isTrial && (
+                  <p className="mt-1 text-xs font-medium text-green-600">
+                    {remainingTrialDays} jours d&apos;essai restants
+                  </p>
+                )}
                 <p className="mt-3 text-sm text-[#596077]">
-                  20 Go · {formatAmountFcfa(1500)}/an
+                  {limitGo} Go · {planPrice || "Gratuit"}
                 </p>
-                <p className="mt-5 text-sm text-[#596077]">Renouvellement le</p>
-                <p className="mt-1 text-sm font-semibold">23 mai 2027</p>
+                {renewalDate && (
+                  <>
+                    <p className="mt-5 text-sm text-[#596077]">Renouvellement le</p>
+                    <p className="mt-1 text-sm font-semibold">{renewalDate}</p>
+                  </>
+                )}
               </div>
               <span className="flex h-20 w-20 shrink-0 items-center justify-center rounded-card bg-violet-100 text-violet-700">
                 <Crown size={38} fill="currentColor" />
