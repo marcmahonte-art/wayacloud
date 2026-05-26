@@ -25,7 +25,7 @@ export default function RegisterPage() {
 
   const [tab, setTab] = useState<AuthTab>("email");
 
-  if (authLoading) {
+  if (authLoading && !user) {
     return (
       <div className="flex justify-center">
         <div className="w-10 h-10 border-2 border-primary border-t-transparent rounded-full animate-spin" />
