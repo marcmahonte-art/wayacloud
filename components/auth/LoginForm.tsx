@@ -9,7 +9,6 @@ import { useRouter } from "next/navigation"
 import { AuthInput } from "@/components/auth/AuthInput"
 import { emailSchema, phoneSchema, type EmailFormData, type PhoneFormData } from "@/lib/auth/validation"
 import { signInWithEmail, signUpWithEmail, signInWithPhone } from "@/lib/auth/service"
-import { DEMO_ACCOUNT, signInAsDemo } from "@/lib/auth/demo"
 import type { AuthTab } from "@/lib/auth/types"
 import { toast } from "sonner"
 import { storage } from "@/lib/storage"
@@ -85,18 +84,6 @@ router.push(`/verify-email?email=${encodeURIComponent(data.email)}`)
     setLoading(false)
   }
 
-  const handleDemoLogin = async () => {
-    setLoading(true)
-    const { error } = await signInAsDemo()
-    if (error) {
-      toast.error("Compte démo non disponible")
-      setLoading(false)
-      return
-    }
-    toast.success("Connexion démo réussie !")
-    router.push("/dashboard")
-    setLoading(false)
-  }
 
   if (tab === "email") {
     return (
@@ -163,26 +150,6 @@ router.push(`/verify-email?email=${encodeURIComponent(data.email)}`)
             </>
           )}
         </button>
-
-        {mode === "login" && (
-          <button
-            type="button"
-            onClick={handleDemoLogin}
-            disabled={loading}
-            className={cn(
-              "w-full h-12 rounded-xl border-2 border-dashed border-primary/30 text-primary font-medium text-sm",
-              "hover:bg-brand-tint hover:border-primary/50",
-              "transition-all duration-200",
-              "flex items-center justify-center gap-2"
-            )}
-          >
-            {loading ? (
-              <Loader2 size={16} className="animate-spin" />
-            ) : (
-              "Démo - Connexion rapide"
-            )}
-          </button>
-        )}
       </form>
     )
   }
