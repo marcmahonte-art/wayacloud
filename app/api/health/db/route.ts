@@ -1,9 +1,19 @@
 import { NextResponse } from "next/server";
-import { createAdminSupabaseClient } from "@/lib/supabase/admin";
+import { createClient } from "@supabase/supabase-js";
+
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 export async function GET() {
   try {
-    const supabase = createAdminSupabaseClient();
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+    const key =
+      process.env.SUPABASE_SERVICE_ROLE_KEY ??
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
+      "";
+    const supabase = createClient(url, key, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
     const { error } = await supabase.from("profiles").select("id").limit(1);
 
     if (error) {
