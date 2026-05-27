@@ -3,10 +3,12 @@ const relativeTimeFormatter = new Intl.RelativeTimeFormat("fr-FR", {
 });
 
 export function formatAmountFcfa(amount: number): string {
+  if (typeof amount !== "number" || isNaN(amount)) return "0 F"
   return `${amount.toLocaleString("fr-FR")} F`;
 }
 
 export function formatStorageGo(value: number): string {
+  if (typeof value !== "number" || isNaN(value)) return "0 Go"
   return `${value.toLocaleString("fr-FR")} Go`;
 }
 

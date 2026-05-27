@@ -12,6 +12,7 @@ import { signInWithEmail, signUpWithEmail, signInWithPhone } from "@/lib/auth/se
 import { DEMO_ACCOUNT, signInAsDemo } from "@/lib/auth/demo"
 import type { AuthTab } from "@/lib/auth/types"
 import { toast } from "sonner"
+import { storage } from "@/lib/storage"
 import { cn } from "@/lib/utils"
 
 interface LoginFormProps {
@@ -37,22 +38,34 @@ export function LoginForm({ tab, mode = "login", onOtpSent }: LoginFormProps) {
   const handleEmailSubmit = async (data: EmailFormData) => {
     setLoading(true)
 
-    const authFn = mode === "login" ? signInWithEmail : signUpWithEmail
-    const { error } = await authFn(data)
+    if (mode === "register") {
+      const referredBy = storage.get<string | null>("wayacloud_referral_code", null) || undefined
+      const { error } = await signUpWithEmail({ ...data, referredBy })
+      if (error) {
+        toast.error(error.message)
+        setLoading(false)
+        return
+      }
+      storage.remove("wayacloud_referral_code")
+      setLoading(false)
+      router.push(`/confirmation-email?email=${encodeURIComponent(data.email)}`)
+      return
+    }
 
+    const { error } = await signInWithEmail(data)
     if (error) {
+      if (error.message === "Veuillez confirmer votre adresse email") {
+        setLoading(false)
+router.push(`/verify-email?email=${encodeURIComponent(data.email)}`)
+        return
+      }
       toast.error(error.message)
       setLoading(false)
       return
     }
 
-    if (mode === "login") {
-      toast.success("Connexion réussie !")
-      router.push("/dashboard")
-    } else {
-      toast.success("Un lien de confirmation a été envoyé à votre adresse e-mail.")
-      if (onOtpSent) onOtpSent("Vérifiez votre boîte de réception")
-    }
+    toast.success("Connexion réussie !")
+    router.push("/dashboard")
     setLoading(false)
   }
 

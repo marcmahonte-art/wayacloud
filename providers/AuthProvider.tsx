@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client"
 import { signOut as authSignOut } from "@/lib/auth/service"
 import { getProfile, getStorageQuota, getSubscription, getRemainingTrialDays } from "@/lib/profile"
 import type { AuthState, ProfileData, StorageQuota, SubscriptionData } from "@/lib/auth/types"
+import { logger } from "@/lib/logger"
 
 const supabase = createClient()
 
@@ -31,9 +32,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [subscription, setSubscription] = useState<SubscriptionData | null>(null)
   const [profileLoading, setProfileLoading] = useState(false)
   const fetchingRef = useRef(false)
+  const mountedRef = useRef(true)
+
+  useEffect(() => {
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+    }
+  }, [])
 
   const fetchProfileData = useCallback(async () => {
-    if (fetchingRef.current) return
+    if (fetchingRef.current || !mountedRef.current) return
     fetchingRef.current = true
     setProfileLoading(true)
     try {
@@ -42,15 +51,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         getStorageQuota(),
         getSubscription(),
       ])
-      setProfile(prof)
-      setStorageQuota(quota)
-      setSubscription(sub)
-    } catch {
-      setProfile(null)
-      setStorageQuota(null)
-      setSubscription(null)
+      if (mountedRef.current) {
+        setProfile(prof)
+        setStorageQuota(quota)
+        setSubscription(sub)
+      }
+    } catch (err) {
+      logger.error("fetchProfileData failed", err)
+      if (mountedRef.current) {
+        setProfile(null)
+        setStorageQuota(null)
+        setSubscription(null)
+      }
     } finally {
-      setProfileLoading(false)
+      if (mountedRef.current) {
+        setProfileLoading(false)
+      }
       fetchingRef.current = false
     }
   }, [])
@@ -59,16 +75,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const { data: { session } } = await supabase.auth.getSession()
       const { data: { user } } = await supabase.auth.getUser()
-      setState({ user, session, loading: false })
-      if (user) {
+      if (mountedRef.current) {
+        setState({ user, session, loading: false })
+      }
+      if (user && mountedRef.current) {
         fetchProfileData()
-      } else {
+      } else if (mountedRef.current) {
         setProfile(null)
         setStorageQuota(null)
         setSubscription(null)
       }
-    } catch {
-      setState({ user: null, session: null, loading: false })
+    } catch (err) {
+      logger.error("Auth refresh failed", err)
+      if (mountedRef.current) {
+        setState({ user: null, session: null, loading: false })
+      }
     }
   }, [fetchProfileData])
 
@@ -76,22 +97,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       await authSignOut()
     } catch {
-      // ignore signout errors
+      // silent
     }
-    setState({ user: null, session: null, loading: false })
-    setProfile(null)
-    setStorageQuota(null)
-    setSubscription(null)
+    if (mountedRef.current) {
+      setState({ user: null, session: null, loading: false })
+      setProfile(null)
+      setStorageQuota(null)
+      setSubscription(null)
+    }
   }, [])
 
   useEffect(() => {
     refresh()
 
     const { data: { subscription: sub } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setState({ user: session?.user ?? null, session, loading: false })
-      if (session?.user) {
+      if (mountedRef.current) {
+        setState({ user: session?.user ?? null, session, loading: false })
+      }
+      if (session?.user && mountedRef.current) {
         fetchProfileData()
-      } else {
+      } else if (mountedRef.current) {
         setProfile(null)
         setStorageQuota(null)
         setSubscription(null)

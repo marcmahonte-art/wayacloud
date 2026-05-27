@@ -1,8 +1,12 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { computeFileSha256 } from "@/lib/upload/fileHash";
 import { useAuth } from "@/providers/AuthProvider";
+import { useRealtimeSync } from "@/hooks/useRealtimeSync";
+import { SkeletonDashboard } from "@/components/ui/Skeletons";
+import { storage } from "@/lib/storage";
 import {
   BarChart3,
   Bot,
@@ -27,8 +31,14 @@ import {
   ShieldAlert,
   Smartphone,
   Sparkles,
+  Trash2,
   Users,
+  UserPlus,
   Wallet,
+  X,
+  ExternalLink,
+  Zap,
+  Target,
 } from "lucide-react";
 import { formatAmountFcfa, formatStorageGo } from "@/lib/formatters";
 import Link from "next/link";
@@ -148,13 +158,6 @@ const tools = [
   },
 ];
 
-const activity = [
-  { label: "Sauvegarde WhatsApp", detail: "23 fichiers sauvegardés", time: "Il y a 3 min", icon: MessageCircle, color: "text-wa-green" },
-  { label: "Fichier importé", detail: "Vacances Bobo 2026.jpg", time: "Il y a 15 min", icon: FileImage, color: "text-violet-600" },
-  { label: "Fichier partagé", detail: "Budget_Projet.xlsx", time: "Il y a 1 h", icon: Share2, color: "text-blue-600" },
-  { label: "Abonnement renouvelé", detail: "Sauve WhatsApp 20 Go", time: "Il y a 2 h", icon: Crown, color: "text-primary" },
-];
-
 function bytesToGo(bytes: number): string {
   return (bytes / (1024 * 1024 * 1024)).toFixed(1)
 }
@@ -164,22 +167,81 @@ function percentUsed(used: number, total: number): number {
   return Math.min(100, Math.round((used / total) * 100))
 }
 
+const ACTIVITY_ICONS: Record<string, { icon: any; color: string }> = {
+  upload: { icon: CloudUpload, color: "text-violet-600" },
+  delete: { icon: X, color: "text-red-500" },
+  trash: { icon: Trash2, color: "text-amber-500" },
+  restore: { icon: Check, color: "text-green-600" },
+  share: { icon: Share2, color: "text-blue-600" },
+  rename: { icon: FileText, color: "text-sky-600" },
+  folder_create: { icon: Folder, color: "text-amber-500" },
+  ai_action: { icon: Bot, color: "text-violet-600" },
+  backup: { icon: MessageCircle, color: "text-wa-green" },
+  catalog_backup: { icon: MessageCircle, color: "text-wa-green" },
+  payment: { icon: Wallet, color: "text-green-600" },
+  subscription: { icon: Crown, color: "text-primary" },
+  signup: { icon: UserPlus, color: "text-blue-600" },
+};
+
+function formatActivityTime(dateStr: string): string {
+  const now = Date.now();
+  const date = new Date(dateStr).getTime();
+  const diffMs = now - date;
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return "À l'instant";
+  if (mins < 60) return `Il y a ${mins} min`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `Il y a ${hours} h`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `Il y a ${days} j`;
+  return new Date(dateStr).toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
+}
+
 export default function DashboardPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
-  const { storageQuota, subscription, remainingTrialDays } = useAuth();
+  const { user, storageQuota: initialQuota, subscription, remainingTrialDays, profileLoading, refresh } = useAuth();
   const [isUploading, setIsUploading] = useState(false);
+  const [toast, setToast] = useState<{ show: boolean; message: string; type: "success" | "info" | "error" }>({ show: false, message: "", type: "success" });
+  const [aiInput, setAiInput] = useState("");
+  const [aiMessages, setAiMessages] = useState<{ role: "user" | "assistant"; text: string }[]>([]);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [activities, setActivities] = useState<any[]>([]);
+  const [liveQuota, setLiveQuota] = useState(initialQuota);
+  const [activityLoading, setActivityLoading] = useState(true);
+
+  const storageQuota = liveQuota || initialQuota;
+
+  useRealtimeSync(user?.id, {
+    onActivity: (activity: any) => setActivities((prev) => [activity, ...(Array.isArray(prev) ? prev : [])].slice(0, 50)),
+    onQuotaChange: (quota: any) => setLiveQuota(quota),
+  });
+
+  // Load initial activities
+  useEffect(() => {
+    if (!user?.id) return;
+    fetch("/api/activities?limit=10")
+      .then((r) => { if (!r.ok) throw new Error(); return r.json(); })
+      .then((data) => { setActivities(Array.isArray(data) ? data : []); setActivityLoading(false); })
+      .catch(() => setActivityLoading(false));
+  }, [user?.id]);
+
+  const showToast = (message: string, type: "success" | "info" | "error" = "success") => {
+    setToast({ show: true, message, type });
+    setTimeout(() => setToast({ show: false, message: "", type: "success" }), 3000);
+  };
 
   const usedGo = storageQuota ? bytesToGo(storageQuota.storage_used_bytes) : "0"
-  const limitGo = storageQuota ? bytesToGo(storageQuota.storage_limit_bytes) : "20"
+  const limitGo = storageQuota ? bytesToGo(storageQuota.storage_limit_bytes) : "5"
   const usagePercent = storageQuota ? percentUsed(storageQuota.storage_used_bytes, storageQuota.storage_limit_bytes) : 0
-  const remainingGo = storageQuota ? bytesToGo(storageQuota.storage_limit_bytes - storageQuota.storage_used_bytes) : "20"
-  const planName = subscription?.plan_name || "Gratuit"
-  const planPrice = subscription?.plan_price ? `${subscription.plan_price.toLocaleString("fr-FR")} F/mois` : ""
-  const renewalDate = subscription?.ends_at
+  const remainingGo = storageQuota ? bytesToGo(storageQuota.storage_limit_bytes - storageQuota.storage_used_bytes) : "5"
+  const isTrial = remainingTrialDays > 0
+  const isFree = !subscription || subscription.plan_name === "Gratuit" || subscription.plan_price === 0
+  const planName = isFree ? "Gratuit" : subscription?.plan_name || "Gratuit"
+  const planPrice = isFree ? "0 F/mois" : `${subscription?.plan_price?.toLocaleString("fr-FR") || "0"} F/mois`
+  const renewalDate = subscription?.ends_at && !isFree
     ? new Date(subscription.ends_at).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })
     : null
-  const isTrial = remainingTrialDays > 0
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -187,7 +249,11 @@ export default function DashboardPage() {
 
     setIsUploading(true);
     try {
-      // 1. Get presigned URL
+      let checksumSha256: string | undefined;
+      try {
+        checksumSha256 = await computeFileSha256(file);
+      } catch { }
+
       const presignRes = await fetch("/api/upload/presign", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -195,6 +261,7 @@ export default function DashboardPage() {
           fileName: file.name,
           mimeType: file.type || "application/octet-stream",
           fileSize: file.size,
+          checksumSha256,
         }),
       });
 
@@ -203,23 +270,49 @@ export default function DashboardPage() {
         throw new Error(error.message || "Erreur lors de la génération de l'URL");
       }
 
-      const { url, key } = await presignRes.json();
+      const data = await presignRes.json() as { exists: boolean; url?: string; key: string };
+      let fileUrl: string;
 
-      // 2. Upload file to Wasabi
-      const uploadRes = await fetch(url, {
-        method: "PUT",
-        headers: {
-          "Content-Type": file.type || "application/octet-stream",
-        },
-        body: file,
-      });
+      if (data.exists) {
+        const confirmRes = await fetch("/api/upload/confirm", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            key: data.key,
+            size: file.size,
+            name: file.name,
+            mimeType: file.type || "application/octet-stream",
+            checksumSha256,
+          }),
+        });
+        const confirmData = confirmRes.ok ? await confirmRes.json() : null;
+        fileUrl = confirmData?.url || "";
+      } else {
+        const uploadRes = await fetch(data.url!, {
+          method: "PUT",
+          headers: { "Content-Type": file.type || "application/octet-stream" },
+          body: file,
+        });
 
-      if (!uploadRes.ok) {
-        throw new Error("Erreur lors de l'envoi vers Wasabi");
+        if (!uploadRes.ok) {
+          throw new Error("Erreur lors de l'envoi vers Wasabi");
+        }
+
+        const confirmRes = await fetch("/api/upload/confirm", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            key: data.key,
+            size: file.size,
+            name: file.name,
+            mimeType: file.type || "application/octet-stream",
+            checksumSha256,
+          }),
+        });
+        const confirmData = confirmRes.ok ? await confirmRes.json() : null;
+        fileUrl = confirmData?.url || data.url!.split("?")[0];
       }
 
-      // Successful S3 Upload: save metadata
-      const cleanUrl = url.split("?")[0];
       const category = getFileTypeCategory(file.type, file.name);
       
       const newFile = {
@@ -229,21 +322,19 @@ export default function DashboardPage() {
         iconName: getFileTypeIconName(category),
         color: getFileTypeColor(category),
         type: category.toLowerCase(),
-        url: cleanUrl,
+        url: fileUrl,
       };
 
-      const existing = localStorage.getItem("wayacloud_uploaded_files");
-      const filesList = existing ? JSON.parse(existing) : [];
+      const filesList = storage.get<unknown[]>("wayacloud_uploaded_files", []);
       filesList.unshift(newFile);
-      localStorage.setItem("wayacloud_uploaded_files", JSON.stringify(filesList));
+      storage.set("wayacloud_uploaded_files", filesList);
 
       window.dispatchEvent(new Event("wayacloud_file_uploaded"));
-      alert("Fichier importé avec succès sur Wasabi !");
+      showToast("Fichier importé avec succès !");
 
     } catch (error: any) {
       console.warn("Erreur d'import, bascule vers le mode démo local :", error);
       
-      // Fallback local: use Object URL to preview directly in browser
       const localUrl = URL.createObjectURL(file);
       const category = getFileTypeCategory(file.type, file.name);
       
@@ -257,13 +348,12 @@ export default function DashboardPage() {
         url: localUrl,
       };
 
-      const existing = localStorage.getItem("wayacloud_uploaded_files");
-      const filesList = existing ? JSON.parse(existing) : [];
+      const filesList = storage.get<unknown[]>("wayacloud_uploaded_files", []);
       filesList.unshift(newFile);
-      localStorage.setItem("wayacloud_uploaded_files", JSON.stringify(filesList));
+      storage.set("wayacloud_uploaded_files", filesList);
 
       window.dispatchEvent(new Event("wayacloud_file_uploaded"));
-      alert("Fichier importé avec succès en mode démo local !");
+      showToast("Fichier importé en mode démo", "info");
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) {
@@ -290,24 +380,46 @@ export default function DashboardPage() {
           url: "#",
         };
 
-        const existing = localStorage.getItem("wayacloud_uploaded_files");
-        const filesList = existing ? JSON.parse(existing) : [];
+        const filesList = storage.get<unknown[]>("wayacloud_uploaded_files", []);
         filesList.unshift(newFolder);
-        localStorage.setItem("wayacloud_uploaded_files", JSON.stringify(filesList));
+        storage.set("wayacloud_uploaded_files", filesList);
 
         window.dispatchEvent(new Event("wayacloud_file_uploaded"));
-        alert(`Dossier "${folderName}" créé avec succès !`);
+        showToast(`Dossier "${folderName}" créé !`);
       }
     } else if (label === "Partager un lien") {
-      navigator.clipboard.writeText("https://wayacloud.bf/share/d41d8cd9");
-      alert("Lien de partage copié dans le presse-papiers !");
+      navigator.clipboard.writeText("https://wayacloud.silk.vercel.app/share/demo");
+      showToast("Lien copié dans le presse-papiers !");
     } else if (label === "Album partagé") {
-      const albumName = prompt("Nom de l'album partagé :");
-      if (albumName) {
-        alert(`Album partagé "${albumName}" créé avec succès !`);
-      }
+      router.push("/albums");
     }
   };
+
+  const handleAiSubmit = async () => {
+    if (!aiInput.trim() || aiLoading) return;
+    const userMessage = aiInput.trim();
+    setAiInput("");
+    setAiMessages((prev) => [...prev, { role: "user", text: userMessage }]);
+    setAiLoading(true);
+
+    try {
+      const res = await fetch("/api/ai/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: userMessage }),
+      });
+      const data = await res.json();
+      setAiMessages((prev) => [...prev, { role: "assistant", text: data.response || data.message || "Désolé, je n'ai pas pu traiter votre demande." }]);
+    } catch {
+      setAiMessages((prev) => [...prev, { role: "assistant", text: "Service temporairement indisponible. Veuillez réessayer." }]);
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  if (profileLoading && !storageQuota) {
+    return <SkeletonDashboard />;
+  }
 
   return (
     <div className="grid min-w-0 gap-6 2xl:grid-cols-[minmax(0,1fr)_390px]">
@@ -337,7 +449,7 @@ export default function DashboardPage() {
             </div>
             <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
               <p className="text-sm font-medium">{remainingGo} Go disponibles</p>
-              <button className="rounded-btn border border-white/50 px-4 py-2 text-sm font-semibold">
+              <button onClick={() => router.push("/abonnement")} className="rounded-btn border border-white/50 px-4 py-2 text-sm font-semibold hover:bg-white/10 transition-colors">
                 Voir les détails →
               </button>
             </div>
@@ -356,11 +468,11 @@ export default function DashboardPage() {
                   </p>
                 )}
                 <p className="mt-3 text-sm text-[#596077]">
-                  {limitGo} Go · {planPrice || "Gratuit"}
+                  {limitGo} Go · {planPrice}
                 </p>
                 {renewalDate && (
                   <>
-                    <p className="mt-5 text-sm text-[#596077]">Renouvellement le</p>
+                    <p className="mt-5 text-sm text-[#596077]">{isTrial ? "Fin de l'essai le" : "Renouvellement le"}</p>
                     <p className="mt-1 text-sm font-semibold">{renewalDate}</p>
                   </>
                 )}
@@ -469,16 +581,45 @@ export default function DashboardPage() {
           <article className="min-w-0 rounded-card border border-[#ECE7DF] bg-white p-5 shadow-card">
             <h2 className="text-lg font-bold">Activité récente</h2>
             <div className="mt-4 space-y-4">
-              {activity.map((item) => (
-                <div key={item.label} className="grid min-w-0 grid-cols-[24px_minmax(0,1fr)_auto] gap-3">
-                  <item.icon className={item.color} size={18} />
-                  <div>
-                    <p className="text-sm font-bold">{item.label}</p>
-                    <p className="text-xs text-[#69708A]">{item.detail}</p>
-                  </div>
-                  <p className="text-xs text-[#9CA3AF]">{item.time}</p>
+              {activityLoading ? (
+                <div className="space-y-4">
+                  {[1,2,3,4].map((i) => (
+                    <div key={i} className="flex items-center gap-3 animate-pulse">
+                      <div className="h-5 w-5 rounded-full bg-[#ECE7DF]" />
+                      <div className="flex-1 space-y-1.5">
+                        <div className="h-3.5 w-32 rounded bg-[#ECE7DF]" />
+                        <div className="h-3 w-24 rounded bg-[#F0ECE6]" />
+                      </div>
+                      <div className="h-3 w-16 rounded bg-[#F0ECE6]" />
+                    </div>
+                  ))}
                 </div>
-              ))}
+              ) : !Array.isArray(activities) || activities.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-8 text-center">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#F5F3F0]">
+                    <Zap size={20} className="text-[#C8C0B5]" />
+                  </div>
+                  <p className="mt-3 text-[13px] font-semibold text-slate-500">Aucune activité récente</p>
+                  <p className="text-xs text-slate-400 mt-1">Importez un fichier pour commencer</p>
+                </div>
+              ) : (
+                (Array.isArray(activities) ? activities : []).slice(0, 8).map((item: any) => {
+                  const actIcon = ACTIVITY_ICONS[item.type] || { icon: Zap, color: "text-[#69708A]" };
+                  const Icon = actIcon.icon;
+                  return (
+                    <div key={item.id} className="grid min-w-0 grid-cols-[24px_minmax(0,1fr)_auto] gap-3">
+                      <Icon className={actIcon.color} size={18} />
+                      <div className="min-w-0">
+                        <p className="text-sm font-bold truncate">{item.title}</p>
+                        {item.description && (
+                          <p className="text-xs text-[#69708A] truncate">{item.description}</p>
+                        )}
+                      </div>
+                      <p className="text-xs text-[#9CA3AF] whitespace-nowrap">{formatActivityTime(item.created_at)}</p>
+                    </div>
+                  );
+                })
+              )}
             </div>
           </article>
         </div>
@@ -507,38 +648,79 @@ export default function DashboardPage() {
         <RecentFilesList />
 
         <article className="min-w-0 rounded-card border border-[#E5DAF8] bg-[#FBF8FF] p-5 shadow-card">
-          <div className="grid min-w-0 grid-cols-[54px_minmax(0,1fr)] gap-3 sm:grid-cols-[54px_minmax(0,1fr)_auto]">
-            <span className="flex h-12 w-12 items-center justify-center rounded-card bg-blue-50 text-blue-600">
-              <Bot size={30} />
+          <div className="grid min-w-0 grid-cols-[48px_minmax(0,1fr)] gap-3 sm:grid-cols-[48px_minmax(0,1fr)_auto]">
+            <span className="flex h-11 w-11 items-center justify-center rounded-card bg-blue-50 text-blue-600">
+              <Bot size={26} />
             </span>
             <div>
-              <h2 className="text-base font-bold text-[#4B18C9]">Assistant IA WayaCloud</h2>
-              <p className="mt-1 text-sm leading-5 text-[#596077]">
+              <h2 className="text-[15px] font-bold text-[#4B18C9]">Assistant IA WayaCloud</h2>
+              <p className="mt-0.5 text-[13px] leading-5 text-[#596077]">
                 Posez-moi une question sur vos fichiers ou conversations.
               </p>
             </div>
-            <span className="h-fit rounded-md bg-violet-100 px-2 py-1 text-xs font-bold text-violet-700">
+            <span className="h-fit w-fit rounded-md bg-violet-100 px-2.5 py-0.5 text-[11px] font-bold text-violet-700">
               Bêta
             </span>
           </div>
-          <div className="mt-4 space-y-2">
-            {["Résumé ma discussion WhatsApp", "Quels sont mes reçus Orange Money ?", "Montre-moi mes documents CNIB"].map((prompt) => (
+
+          {aiMessages.length > 0 && (
+            <div className="mt-4 max-h-[200px] overflow-y-auto space-y-2 rounded-xl bg-white p-3 border border-[#EAE5E0]">
+              {aiMessages.map((msg, i) => (
+                <div key={i} className={`flex gap-2.5 ${msg.role === "user" ? "justify-end" : ""}`}>
+                  <div className={`rounded-xl px-3.5 py-2.5 max-w-[85%] text-[13px] leading-5 ${
+                    msg.role === "user"
+                      ? "bg-primary/10 text-dark rounded-tr-sm"
+                      : "bg-[#F5F3F0] text-[#4A4A4A] rounded-tl-sm"
+                  }`}>
+                    {msg.text}
+                  </div>
+                </div>
+              ))}
+              {aiLoading && (
+                <div className="flex items-center gap-2 text-[13px] text-[#69708A] px-1">
+                  <div className="flex gap-1">
+                    <span className="h-2 w-2 rounded-full bg-primary/40 animate-bounce" style={{ animationDelay: "0ms" }} />
+                    <span className="h-2 w-2 rounded-full bg-primary/40 animate-bounce" style={{ animationDelay: "150ms" }} />
+                    <span className="h-2 w-2 rounded-full bg-primary/40 animate-bounce" style={{ animationDelay: "300ms" }} />
+                  </div>
+                  Réflexion...
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {aiMessages.length === 0 && ["Résumé ma discussion WhatsApp", "Quels sont mes reçus Orange Money ?", "Montre-moi mes documents CNIB"].map((prompt) => (
               <button
                 key={prompt}
-                className="flex h-9 w-full items-center justify-between rounded-btn bg-white px-3 text-left text-xs font-medium text-[#596077] shadow-card"
+                onClick={() => { setAiInput(prompt); }}
+                className="flex h-8 items-center gap-1.5 rounded-btn bg-white px-3 text-left text-[11px] font-medium text-[#596077] border border-[#EAE5E0] hover:border-primary/30 hover:text-primary transition-colors"
               >
                 {prompt}
-                <ChevronRight size={15} />
+                <ChevronRight size={12} />
               </button>
             ))}
           </div>
-          <label className="mt-4 flex h-11 items-center gap-2 rounded-btn bg-white px-3 shadow-card">
+
+          <form
+            onSubmit={(e) => { e.preventDefault(); handleAiSubmit(); }}
+            className="mt-3 flex h-11 items-center gap-2 rounded-btn bg-white px-3.5 border border-[#EAE5E0] focus-within:border-primary/40 focus-within:ring-1 focus-within:ring-primary/20 transition-all"
+          >
             <input
-              className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[#9CA3AF]"
+              value={aiInput}
+              onChange={(e) => setAiInput(e.target.value)}
+              className="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-[#9CA3AF]"
               placeholder="Demandez quelque chose..."
+              disabled={aiLoading}
             />
-            <Send size={18} className="text-violet-600" />
-          </label>
+            <button
+              type="submit"
+              disabled={!aiInput.trim() || aiLoading}
+              className="shrink-0 text-violet-600 hover:text-violet-700 transition-colors disabled:opacity-40"
+            >
+              {aiLoading ? <Loader2 size={17} className="animate-spin" /> : <Send size={17} />}
+            </button>
+          </form>
         </article>
 
         <article className="min-w-0 rounded-card border border-green-100 bg-green-50 p-5">
@@ -592,6 +774,19 @@ export default function DashboardPage() {
           </div>
         </div>
       </footer>
+
+      {toast.show && (
+        <div className={`fixed bottom-6 right-6 z-50 flex items-center gap-2.5 rounded-xl border px-5 py-3.5 shadow-[0_8px_30px_rgba(0,0,0,0.12)] animate-in slide-in-from-bottom-4 ${
+          toast.type === "success" ? "bg-green-50 border-green-200 text-green-800"
+          : toast.type === "error" ? "bg-red-50 border-red-200 text-red-800"
+          : "bg-blue-50 border-blue-200 text-blue-800"
+        }`}>
+          {toast.type === "success" ? <Check size={17} className="text-green-600" />
+          : toast.type === "error" ? <X size={17} className="text-red-600" />
+          : <Zap size={17} className="text-blue-600" />}
+          <span className="text-[13px] font-semibold">{toast.message}</span>
+        </div>
+      )}
     </div>
   );
 }

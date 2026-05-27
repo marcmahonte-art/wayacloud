@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { FileImage, FileText, Play, Folder, FileAudio, MoreVertical } from "lucide-react";
 import { FileViewerModal } from "../ui/FileViewerModal";
+import { storage } from "@/lib/storage";
 
 const recentFilesData = [
   { name: "Vacances Bobo 2026.jpg", meta: "4.2 Mo • Images", time: "Aujourd'hui, 10:30", icon: FileImage, color: "bg-orange-100 text-primary", type: "image", url: "https://images.unsplash.com/photo-1542314831-c6a4d27ce6a2?q=80&w=2000&auto=format&fit=crop" },
@@ -27,16 +28,8 @@ export function RecentFilesList() {
   const [uploadedFiles, setUploadedFiles] = useState<any[]>([]);
 
   const loadUploadedFiles = () => {
-    if (typeof window !== "undefined") {
-      const stored = localStorage.getItem("wayacloud_uploaded_files");
-      if (stored) {
-        try {
-          setUploadedFiles(JSON.parse(stored));
-        } catch (e) {
-          console.error(e);
-        }
-      }
-    }
+    const files = storage.get<unknown>("wayacloud_uploaded_files", []);
+    setUploadedFiles(Array.isArray(files) ? files : []);
   };
 
   useEffect(() => {
@@ -48,9 +41,9 @@ export function RecentFilesList() {
   }, []);
 
   const allFiles = [
-    ...uploadedFiles.map((f) => ({
+    ...uploadedFiles.filter(Boolean).map((f) => ({
       ...f,
-      icon: getIconComponent(f.iconName),
+      icon: getIconComponent(typeof f.iconName === "string" ? f.iconName : ""),
     })),
     ...recentFilesData,
   ];

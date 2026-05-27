@@ -13,6 +13,8 @@ import {
 import { cn } from "@/lib/utils"
 import { onboardingSchema, type OnboardingFormData } from "@/lib/auth/validation"
 import { signUpWithOnboarding, signInWithEmail } from "@/lib/auth/service"
+import { SocialAuth } from "@/components/auth/SocialAuth"
+import { AuthSeparator } from "@/components/auth/AuthSeparator"
 
 interface OnboardingModalProps {
   open: boolean
@@ -86,7 +88,14 @@ export function OnboardingModal({ open, onOpenChange }: OnboardingModalProps) {
     })
 
     if (signInError) {
+      if (signInError.message === "Veuillez confirmer votre adresse email") {
+        setLoading(false)
+        onOpenChange(false)
+        router.push(`/verify-email?email=${encodeURIComponent(data.email)}`)
+        return
+      }
       form.setError("email", { message: signInError.message })
+      form.setError("password", { message: signInError.message })
       setLoading(false)
       return
     }
@@ -179,6 +188,9 @@ export function OnboardingModal({ open, onOpenChange }: OnboardingModalProps) {
                         <h2 className="text-xl font-bold text-dark">{steps[0].title}</h2>
                         <p className="mt-1 text-sm text-gray">{steps[0].subtitle}</p>
                       </div>
+
+                      <SocialAuth />
+                      <AuthSeparator />
 
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">

@@ -1,8 +1,30 @@
 import { NextResponse } from "next/server";
+import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 export async function POST(req: Request) {
   try {
-    const { planId, amount, name } = await req.json();
+    const { planId, amount, name, promoCodeId, is_gift, gift_recipient_phone, gift_message } = await req.json();
+    const supabase = createAdminSupabaseClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json({ error: "Authentification requise." }, { status: 401 });
+    }
+
+    const { data: plan } = await supabase
+      .from("storage_plans")
+      .select("id, name, monthly_price_fcfa, storage_go")
+      .eq("id", planId)
+      .eq("is_active", true)
+      .single();
+
+    if (!plan) {
+      return NextResponse.json({ error: "Plan invalide." }, { status: 400 });
+    }
+
+    if (plan.monthly_price_fcfa === 0) {
+      return NextResponse.json({ error: "Ce plan est gratuit." }, { status: 400 });
+    }
 
     const apiKey = process.env.CINETPAY_API_KEY;
     const siteId = process.env.CINETPAY_SITE_ID;
@@ -15,6 +37,32 @@ export async function POST(req: Request) {
     }
 
     const transactionId = `waya_${Date.now()}_${Math.floor(Math.random() * 100000)}`;
+
+    await supabase.from("payments").insert({
+      user_id: user.id,
+      plan_id: plan.id,
+      cinetpay_transaction_id: transactionId,
+      amount_fcfa: amount,
+      status: "pending",
+      promo_code_id: promoCodeId || null,
+      is_gift: is_gift || false,
+      gift_recipient_phone: gift_recipient_phone || null,
+      gift_message: gift_message || null,
+    });
+
+    if (promoCodeId) {
+      const { data: promo } = await supabase
+        .from("promo_codes")
+        .select("used_count")
+        .eq("id", promoCodeId)
+        .single();
+      if (promo) {
+        await supabase
+          .from("promo_codes")
+          .update({ used_count: (promo.used_count || 0) + 1 })
+          .eq("id", promoCodeId);
+      }
+    }
 
     const payload = {
       apikey: apiKey,

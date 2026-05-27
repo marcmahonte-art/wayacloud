@@ -23,13 +23,16 @@ export async function signInWithEmail(input: LoginInput): Promise<{ error?: Auth
   return {}
 }
 
-export async function signUpWithEmail(input: LoginInput): Promise<{ error?: AuthError }> {
-  const { email, password } = input
+export async function signUpWithEmail(input: LoginInput & { referredBy?: string }): Promise<{ error?: AuthError }> {
+  const { email, password, referredBy } = input
+
+  const metadata: Record<string, string> = {};
+  if (referredBy) metadata.referred_by = referredBy;
 
   const { error } = await supabase.auth.signUp({
     email,
     password,
-    options: { data: {} },
+    options: { data: metadata },
   })
 
   if (error) {
@@ -110,10 +113,25 @@ export async function signInWithEmailOtp(email: string): Promise<{ error?: AuthE
   return {}
 }
 
+function getSiteUrl(): string {
+  let url =
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    process.env.NEXT_PUBLIC_VERCEL_URL ||
+    (typeof window !== "undefined" ? window.location.origin : "http://localhost:3000")
+
+  // Ensure url has https:// if it's a vercel domain and missing protocol
+  url = url.startsWith("http") ? url : `https://${url}`
+  
+  // Remove trailing slash if present
+  url = url.replace(/\/$/, "")
+  
+  return url
+}
+
 export async function signInWithGoogle(): Promise<{ error?: AuthError }> {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
-    options: { redirectTo: `${window.location.origin}/auth/callback` },
+    options: { redirectTo: `${getSiteUrl()}/auth/callback` },
   })
 
   if (error) {
@@ -129,7 +147,7 @@ export async function signInWithGoogle(): Promise<{ error?: AuthError }> {
 export async function signInWithFacebook(): Promise<{ error?: AuthError }> {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "facebook",
-    options: { redirectTo: `${window.location.origin}/auth/callback` },
+    options: { redirectTo: `${getSiteUrl()}/auth/callback` },
   })
 
   if (error) {

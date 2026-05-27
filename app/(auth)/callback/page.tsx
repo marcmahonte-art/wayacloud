@@ -1,1 +1,27 @@
-"use client"\n\nimport { useEffect } from \"react\"\nimport { useRouter } from \"next/navigation\"\nimport { createClient } from \"@/lib/supabase/client\"\n\nexport default function AuthCallback() {\n  const router = useRouter()\n\n  useEffect(() => {\n    const supabase = createClient()\n    supabase.auth\n      .getSessionFromUrl({ storeSession: true })\n      .then(({ error }) => {\n        if (error) {\n          console.error(\"OAuth error:\", error)\n          router.push(\"/login\")\n        } else {\n          router.push(\"/dashboard\")\n        }\n      })\n  }, [router])\n\n  return <p>Processing authentication…</p>\n}\n
+"use client"
+
+import { useEffect } from "react"
+import { useRouter } from "next/navigation"
+import { createClient } from "@/lib/supabase/client"
+
+export default function AuthCallback() {
+  const router = useRouter()
+
+  useEffect(() => {
+    const supabase = createClient()
+
+    supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_IN") {
+        router.push("/dashboard")
+      }
+    })
+
+    supabase.auth.getSession().then(({ data }) => {
+      if (!data.session) {
+        router.push("/login?error=auth_failed")
+      }
+    })
+  }, [router])
+
+  return <p>Processing authentication…</p>
+}

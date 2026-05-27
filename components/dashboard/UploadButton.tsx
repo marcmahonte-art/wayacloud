@@ -2,6 +2,8 @@
 
 import { Loader2, Plus } from "lucide-react";
 import { useRef, useState } from "react";
+import { computeFileSha256 } from "@/lib/upload/fileHash";
+import { storage } from "@/lib/storage";
 
 interface UploadedFile {
   name: string;
@@ -14,8 +16,11 @@ interface UploadedFile {
 }
 
 interface PresignResponse {
-  url: string;
+  exists?: boolean;
+  url?: string;
   key: string;
+  fileId?: string;
+  name?: string;
 }
 
 const getFileTypeCategory = (mimeType: string, fileName: string): string => {
@@ -30,53 +35,33 @@ const getFileTypeCategory = (mimeType: string, fileName: string): string => {
 
 const getFileTypeIconName = (category: string): string => {
   switch (category) {
-    case "Image":
-      return "FileImage";
-    case "Video":
-      return "Play";
-    case "Audio":
-      return "FileAudio";
-    case "PDF":
-      return "FileText";
-    default:
-      return "FileText";
+    case "Image": return "FileImage";
+    case "Video": return "Play";
+    case "Audio": return "FileAudio";
+    case "PDF": return "FileText";
+    default: return "FileText";
   }
 };
 
 const getFileTypeColor = (category: string): string => {
   switch (category) {
-    case "Image":
-      return "bg-orange-100 text-primary";
-    case "Video":
-      return "bg-violet-100 text-violet-700";
-    case "Audio":
-      return "bg-green-100 text-green-700";
-    case "PDF":
-      return "bg-red-100 text-red-600";
-    default:
-      return "bg-blue-100 text-blue-600";
+    case "Image": return "bg-orange-100 text-primary";
+    case "Video": return "bg-violet-100 text-violet-700";
+    case "Audio": return "bg-green-100 text-green-700";
+    case "PDF": return "bg-red-100 text-red-600";
+    default: return "bg-blue-100 text-blue-600";
   }
 };
 
 function readStoredFiles(): UploadedFile[] {
-  const existing = localStorage.getItem("wayacloud_uploaded_files");
-  if (!existing) return [];
-
-  try {
-    return JSON.parse(existing) as UploadedFile[];
-  } catch {
-    return [];
-  }
+  return storage.get<UploadedFile[]>("wayacloud_uploaded_files", []);
 }
 
 function buildFileRecord(file: File, url: string): UploadedFile {
   const category = getFileTypeCategory(file.type, file.name);
-
   return {
     name: file.name,
-    meta: `${(file.size / (1024 * 1024)).toFixed(1)} Mo • ${
-      category === "PDF" ? "PDF" : `${category}s`
-    }`,
+    meta: `${(file.size / (1024 * 1024)).toFixed(1)} Mo • ${category === "PDF" ? "PDF" : `${category}s`}`,
     time: "À l'instant",
     iconName: getFileTypeIconName(category),
     color: getFileTypeColor(category),
@@ -86,6 +71,11 @@ function buildFileRecord(file: File, url: string): UploadedFile {
 }
 
 async function uploadSingleFile(file: File): Promise<UploadedFile> {
+  let checksumSha256: string | undefined;
+  try {
+    checksumSha256 = await computeFileSha256(file);
+  } catch { }
+
   try {
     const presignRes = await fetch("/api/upload/presign", {
       method: "POST",
@@ -94,6 +84,7 @@ async function uploadSingleFile(file: File): Promise<UploadedFile> {
         fileName: file.name,
         mimeType: file.type || "application/octet-stream",
         fileSize: file.size,
+        checksumSha256,
       }),
     });
 
@@ -101,8 +92,26 @@ async function uploadSingleFile(file: File): Promise<UploadedFile> {
       throw new Error("Impossible de préparer l'upload.");
     }
 
-    const { url, key } = (await presignRes.json()) as PresignResponse;
-    const uploadRes = await fetch(url, {
+    const data = (await presignRes.json()) as PresignResponse;
+
+    if (data.exists) {
+      const confirmRes = await fetch("/api/upload/confirm", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          key: data.key,
+          size: file.size,
+          name: file.name,
+          mimeType: file.type || "application/octet-stream",
+          checksumSha256,
+        }),
+      });
+
+      const confirmData = confirmRes.ok ? await confirmRes.json() : null;
+      return buildFileRecord(file, confirmData?.url || "");
+    }
+
+    const uploadRes = await fetch(data.url!, {
       method: "PUT",
       headers: { "Content-Type": file.type || "application/octet-stream" },
       body: file,
@@ -112,13 +121,20 @@ async function uploadSingleFile(file: File): Promise<UploadedFile> {
       throw new Error("Erreur lors de l'envoi vers le stockage.");
     }
 
-    await fetch("/api/upload/confirm", {
+    const confirmRes = await fetch("/api/upload/confirm", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ key, size: file.size }),
+      body: JSON.stringify({
+        key: data.key,
+        size: file.size,
+        name: file.name,
+        mimeType: file.type || "application/octet-stream",
+        checksumSha256,
+      }),
     });
 
-    return buildFileRecord(file, url.split("?")[0]);
+    const confirmData = confirmRes.ok ? await confirmRes.json() : null;
+    return buildFileRecord(file, confirmData?.url || data.url!.split("?")[0]);
   } catch (error: unknown) {
     console.warn("Mode démo local activé pour l'import :", error);
     return buildFileRecord(file, URL.createObjectURL(file));
@@ -144,16 +160,8 @@ export function UploadButton() {
       }
 
       const filesList = readStoredFiles();
-      localStorage.setItem(
-        "wayacloud_uploaded_files",
-        JSON.stringify([...importedFiles, ...filesList]),
-      );
+      storage.set("wayacloud_uploaded_files", [...importedFiles, ...filesList]);
       window.dispatchEvent(new Event("wayacloud_file_uploaded"));
-      alert(
-        selectedFiles.length > 1
-          ? `${selectedFiles.length} fichiers importés avec succès.`
-          : "Fichier importé avec succès.",
-      );
     } finally {
       setIsUploading(false);
       setUploadCount(0);

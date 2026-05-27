@@ -1,9 +1,11 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const protectedPaths = ["/dashboard", "/mes-fichiers", "/albums", "/partages", "/whatsapp", "/abonnement", "/parametres", "/corbeille", "/outils"];
+const protectedPaths = ["/dashboard", "/mes-fichiers", "/albums", "/partages", "/whatsapp", "/abonnement", "/parametres", "/corbeille", "/outils", "/referral", "/gift"];
 
 const authPaths = ["/login", "/register", "/forgot-password", "/reset-password", "/verify-otp"];
+
+const publicPaths = ["/verify-email"];
 
 const securityHeaders = {
   "X-Frame-Options": "DENY",
@@ -22,7 +24,7 @@ function withSecurityHeaders(response: NextResponse): NextResponse {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  if (pathname.startsWith("/api/webhook")) {
+  if (pathname.startsWith("/api/webhook") || pathname.startsWith("/s/")) {
     return withSecurityHeaders(NextResponse.next());
   }
 
@@ -61,17 +63,43 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const isProtectedPath = protectedPaths.some((path) => pathname.startsWith(path));
+  const isPublicPath = publicPaths.some((path) => pathname === path);
+  const isAuthPath = authPaths.some((path) => pathname === path);
+
+  // Redirect unauthenticated users from protected paths
   if (isProtectedPath && !user) {
     return withSecurityHeaders(
       NextResponse.redirect(new URL("/login", request.url)),
     );
   }
 
-  const isAuthPath = authPaths.some((path) => pathname === path);
-  if (isAuthPath && user) {
+  // Redirect unconfirmed users from protected paths to confirmation page
+  if (isProtectedPath && user && !user.email_confirmed_at) {
+    return withSecurityHeaders(
+      NextResponse.redirect(new URL(`/verify-email?email=${encodeURIComponent(user.email || "")}`, request.url)),
+    )
+  }
+
+  // Redirect confirmed users away from verify-email page
+  if (pathname === "/verify-email" && user?.email_confirmed_at) {
     return withSecurityHeaders(
       NextResponse.redirect(new URL("/dashboard", request.url)),
     );
+  }
+
+  // Redirect authenticated users away from auth pages
+  if (isAuthPath && user && user.email_confirmed_at) {
+    return withSecurityHeaders(
+      NextResponse.redirect(new URL("/dashboard", request.url)),
+    );
+  }
+
+  // Allow unconfirmed users to access verify-email page freely
+
+  if (isAuthPath && user && !user.email_confirmed_at) {
+    return withSecurityHeaders(
+      NextResponse.redirect(new URL(`/verify-email?email=${encodeURIComponent(user.email || "")}`, request.url)),
+    )
   }
 
   if (pathname.startsWith("/admin")) {

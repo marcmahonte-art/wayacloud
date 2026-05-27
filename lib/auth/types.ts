@@ -40,6 +40,9 @@ export interface ProfileData {
   city: string | null
   gender: string | null
   role: string
+  avatar_url?: string | null
+  referral_code?: string | null
+  referred_by?: string | null
 }
 
 export interface StorageQuota {

@@ -10,16 +10,29 @@ import {
   validateFileSize,
   validateFileType,
 } from "@/lib/validators";
+import { createAdminSupabaseClient } from "@/lib/supabase/admin";
+import { findExistingFile, buildObjectKey } from "@/lib/files";
 
 const presignSchema = z.object({
   fileName: z.string().min(1),
   mimeType: z.string().min(1),
   fileSize: z.number().int().positive(),
+  checksumSha256: z.string().regex(/^[a-f0-9]{64}$/).optional(),
 });
 
 export async function POST(request: Request) {
+  const supabase = createAdminSupabaseClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    return NextResponse.json(
+      { message: "Authentification requise." },
+      { status: 401 },
+    );
+  }
+
   const forwardedFor = request.headers.get("x-forwarded-for") ?? "local";
-  const rateLimitKey = forwardedFor.split(",")[0]?.trim() ?? "local";
+  const rateLimitKey = `${user.id}:${forwardedFor.split(",")[0]?.trim() ?? "local"}`;
 
   if (isRateLimited(`upload-presign:${rateLimitKey}`, 30, 60000)) {
     return NextResponse.json(
@@ -51,8 +64,22 @@ export async function POST(request: Request) {
     );
   }
 
+  if (body.data.checksumSha256) {
+    const existing = await findExistingFile(user.id, body.data.checksumSha256);
+    if (existing) {
+      return NextResponse.json({
+        exists: true,
+        key: existing.object_key,
+        fileId: existing.id,
+        name: existing.name,
+      });
+    }
+  }
+
   const safeName = sanitizeFileName(body.data.fileName);
-  const key = `uploads/${randomBytes(32).toString("hex")}-${safeName}`;
+  const randomHex = randomBytes(16).toString("hex");
+  const key = buildObjectKey(user.id, safeName, randomHex);
+
   const command = new PutObjectCommand({
     Bucket: getWasabiBucket(),
     Key: key,
@@ -60,5 +87,5 @@ export async function POST(request: Request) {
   });
   const url = await getSignedUrl(getWasabiClient(), command, { expiresIn: 900 });
 
-  return NextResponse.json({ url, key });
+  return NextResponse.json({ exists: false, url, key });
 }

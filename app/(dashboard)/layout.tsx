@@ -1,24 +1,34 @@
 "use client";
 
+import { useState } from "react";
 import {
   Album,
   Bell,
   CircleHelp,
   FileText,
   Folder,
+  Gift,
   Home,
   Image as ImageIcon,
+  Menu,
   MessageCircle,
   Plus,
   Search,
   Share2,
   Trash2,
+  UserPlus,
+  X,
+  Settings,
+  LogOut,
+  ChevronRight,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { UploadButton } from "@/components/dashboard/UploadButton";
 import { useAuth } from "@/providers/AuthProvider";
+import { useRealtimeSync } from "@/hooks/useRealtimeSync";
+import { ErrorBoundary } from "@/components/error/ErrorBoundary";
 
 const navigation = [
   { href: "/dashboard", label: "Tableau de bord", icon: Home },
@@ -28,6 +38,12 @@ const navigation = [
   { href: "/partages", label: "Partages", icon: Share2 },
   { href: "/documents", label: "Documents", icon: FileText },
   { href: "/corbeille", label: "Corbeille", icon: Trash2 },
+];
+
+const bottomLinks = [
+  { href: "/referral", label: "Parrainage", icon: UserPlus },
+  { href: "/gift", label: "Offrir", icon: Gift },
+  { href: "/parametres", label: "Paramètres", icon: Settings },
 ];
 
 function getInitials(firstName?: string | null, lastName?: string | null, fullName?: string | null): string {
@@ -51,139 +67,248 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }>) {
   const pathname = usePathname();
-  const { profile, storageQuota, profileLoading } = useAuth();
+  const router = useRouter();
+  const { user, profile, storageQuota: initialQuota, subscription, logout } = useAuth();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [liveQuota, setLiveQuota] = useState(initialQuota);
 
-  const firstName = profile?.first_name || profile?.full_name?.split(" ")[0] || "Utilisateur"
-  const displayName = profile?.first_name && profile?.last_name
-    ? `${profile.first_name} ${profile.last_name}`
-    : profile?.full_name || "Utilisateur"
-  const userEmail = profile?.email || ""
-  const initials = getInitials(profile?.first_name, profile?.last_name, profile?.full_name)
+  const storageQuota = liveQuota || initialQuota;
+
+  useRealtimeSync(user?.id, {
+    onQuotaChange: (quota: any) => setLiveQuota(quota),
+  });
+
+  const profileFirstName = typeof profile?.first_name === "string" ? profile.first_name : ""
+  const profileLastName = typeof profile?.last_name === "string" ? profile.last_name : ""
+  const profileFullName = typeof profile?.full_name === "string" ? profile.full_name : ""
+
+  const firstName = profileFirstName || profileFullName?.split(" ")[0] || "Utilisateur"
+  const displayName = profileFirstName && profileLastName
+    ? `${profileFirstName} ${profileLastName}`
+    : profileFullName || "Utilisateur"
+  const userEmail = typeof profile?.email === "string" ? profile.email : ""
+  const initials = getInitials(profileFirstName || null, profileLastName || null, profileFullName || null)
 
   const usedGo = storageQuota ? bytesToGo(storageQuota.storage_used_bytes) : "0"
   const limitGo = storageQuota ? bytesToGo(storageQuota.storage_limit_bytes) : "20"
   const usagePercent = storageQuota ? percentUsed(storageQuota.storage_used_bytes, storageQuota.storage_limit_bytes) : 0
 
-  return (
-    <div className="min-h-screen bg-[#FBFAF8] text-dark">
-      <aside className="fixed left-0 top-0 hidden h-screen w-[264px] flex-col overflow-y-auto border-r border-[#ECE7DF] bg-white/90 px-5 py-7 lg:flex xl:w-[282px] xl:px-6">
-        <Link href="/dashboard" className="block">
-          <Image
-            src="/assets/waya-logo.png"
-            alt="WayaCloud"
-            width={210}
-            height={64}
-            priority
-            className="h-auto w-[190px]"
-          />
-        </Link>
+  const isActive = (href: string) => pathname === href || (href === "/dashboard" && pathname === "/");
 
-        <nav className="mt-9 space-y-2">
-          {navigation.map((item) => {
-            const isActive = pathname === item.href || (item.href === "/dashboard" && pathname === "/");
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`flex h-12 items-center gap-3 rounded-card px-4 text-[15px] font-semibold transition ${
-                  isActive
-                    ? "bg-primary/10 text-primary"
-                    : "text-[#171B34] hover:bg-background hover:text-primary"
-                }`}
-              >
-                <item.icon size={20} strokeWidth={1.9} />
-                {item.label}
-              </Link>
-            );
-          })}
-        </nav>
+  const sidebar = (
+    <div className="flex h-full flex-col">
+      <Link href="/dashboard" className="block shrink-0">
+        <Image
+          src="/assets/waya-logo.png"
+          alt="WayaCloud"
+          width={210}
+          height={64}
+          priority
+          className="h-auto w-[170px]"
+        />
+      </Link>
 
-        <div className="mt-auto">
-          <div className="mb-8">
-            <p className="text-xs font-semibold uppercase text-[#69708A]">
-              Espace utilisé
-            </p>
-            <div className="mt-4 flex items-center justify-between text-sm font-bold">
-              <span>{usedGo} Go / {limitGo} Go</span>
-            </div>
-            <div className="mt-3 h-2 rounded-pill bg-[#EFEAF6]">
-              <div className="h-full rounded-pill bg-primary" style={{ width: `${usagePercent}%` }} />
-            </div>
-            <p className="mt-3 text-xs font-medium text-[#69708A]">{usagePercent}% utilisé</p>
+      <nav className="mt-7 flex-1 space-y-1 overflow-y-auto">
+        {navigation.map((item) => {
+          const active = isActive(item.href);
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              onClick={() => setMobileMenuOpen(false)}
+              className={`flex h-11 items-center gap-3 rounded-card px-4 text-[14px] font-semibold transition-all ${
+                active
+                  ? "bg-primary/10 text-primary"
+                  : "text-[#171B34] hover:bg-background hover:text-primary"
+              }`}
+            >
+              <item.icon size={19} strokeWidth={active ? 2.2 : 1.8} />
+              {item.label}
+            </Link>
+          );
+        })}
+      </nav>
+
+      <div className="mt-auto shrink-0">
+        <div className="mb-6">
+          <div className="flex items-center justify-between text-[12px] font-semibold">
+            <span className="text-[#69708A] uppercase tracking-wider">Stockage</span>
+            <span className="text-dark">{usedGo} Go / {limitGo} Go</span>
           </div>
+          <div className="mt-2.5 h-1.5 rounded-full bg-[#EFEAF6]">
+            <div className="h-full rounded-full bg-primary transition-all duration-500" style={{ width: `${usagePercent}%` }} />
+          </div>
+          <p className="mt-1.5 text-[11px] font-medium text-[#69708A]">{usagePercent}% utilisé</p>
+        </div>
 
-          <div className="rounded-card border border-[#E8DCF8] bg-[#FAF6FF] p-5 shadow-card">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-base font-bold text-[#4B18C9]">
-                  Passez au plan Famille 50 Go
+        {subscription && (
+          <Link
+            href="/abonnement"
+            className="mb-6 block rounded-card border border-[#E8DCF8] bg-[#FAF6FF] p-4 transition-colors hover:bg-[#F5EEFF]"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[14px] font-bold text-[#4B18C9] leading-tight">
+                  {subscription?.plan_name === "Gratuit" || !subscription?.plan_price
+                    ? "Passez au plan Essentiel 20 Go"
+                    : subscription?.plan_name === "Essentiel"
+                    ? "Passez au plan Famille 100 Go"
+                    : "Passez au plan Business 500 Go"}
                 </p>
-                <p className="mt-3 text-sm leading-6 text-[#596077]">
-                  Plus d&apos;espace pour vos souvenirs.
+                <p className="mt-1.5 text-[12px] leading-5 text-[#596077]">
+                  {subscription?.plan_name === "Gratuit" || !subscription?.plan_price
+                    ? "Stockez vos premiers fichiers en toute sécurité."
+                    : subscription?.plan_name === "Essentiel"
+                    ? "Parfait pour toute la famille."
+                    : "Pour les professionnels et entreprises."}
                 </p>
               </div>
-              <span className="rounded-btn bg-white p-2 text-primary shadow-card">
-                <Album size={19} />
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-btn bg-white shadow-sm">
+                <Album size={17} className="text-primary" />
               </span>
             </div>
-            <button className="mt-5 h-11 w-full rounded-btn border border-[#7B45F5] text-sm font-bold text-[#5A21DD]">
-              Découvrir les plans
-            </button>
-          </div>
+          </Link>
+        )}
 
-          <div className="mt-10 flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#FFE8D9] text-sm font-bold text-primary">
-              {initials}
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-bold text-dark">{displayName}</p>
-              <p className="truncate text-xs text-[#69708A]">{userEmail}</p>
-            </div>
-            <button className="rounded-btn p-2 text-[#69708A] hover:bg-background">
-              <Plus size={18} />
+        {bottomLinks.map((item) => (
+          <Link
+            key={item.href}
+            href={item.href}
+            onClick={() => setMobileMenuOpen(false)}
+            className={`flex h-11 items-center gap-3 rounded-card px-4 text-[14px] font-semibold transition-all mb-1 ${
+              isActive(item.href)
+                ? "bg-primary/10 text-primary"
+                : "text-[#69708A] hover:bg-background hover:text-dark"
+            }`}
+          >
+            <item.icon size={18} strokeWidth={1.8} />
+            {item.label}
+          </Link>
+        ))}
+
+        <div className="mt-3 flex items-center gap-3 rounded-card p-2 hover:bg-background transition-colors cursor-pointer group" onClick={() => { logout(); router.push("/login"); }}>
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#FFE8D9] text-sm font-bold text-primary">
+            {initials}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-[13px] font-bold text-dark">{displayName}</p>
+            <p className="truncate text-[11px] text-[#69708A]">{userEmail}</p>
+          </div>
+          <LogOut size={15} className="text-[#69708A] opacity-0 group-hover:opacity-100 transition-opacity" />
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen bg-[#FBFAF8] text-dark">
+      {/* Desktop sidebar */}
+      <aside className="fixed left-0 top-0 hidden h-screen w-[250px] flex-col border-r border-[#ECE7DF] bg-white/90 px-4 py-6 lg:flex xl:w-[270px] xl:px-5">
+        {sidebar}
+      </aside>
+
+      {/* Mobile overlay */}
+      {mobileMenuOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm lg:hidden"
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
+
+      {/* Mobile sidebar drawer */}
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 w-[280px] transform border-r border-[#ECE7DF] bg-white shadow-2xl transition-transform duration-300 ease-in-out lg:hidden ${
+          mobileMenuOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        <div className="flex h-full flex-col p-5">
+          <div className="flex items-center justify-between mb-5">
+            <Image
+              src="/assets/waya-logo.png"
+              alt="WayaCloud"
+              width={160}
+              height={48}
+              priority
+              className="h-auto w-[140px]"
+            />
+            <button
+              onClick={() => setMobileMenuOpen(false)}
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-[#69708A] hover:bg-[#F5F3F0] transition-colors"
+            >
+              <X size={18} />
             </button>
           </div>
+          {sidebar}
         </div>
       </aside>
 
-      <div className="min-w-0 lg:pl-[264px] xl:pl-[282px]">
-        <header className="sticky top-0 z-20 border-b border-transparent bg-[#FBFAF8]/90 px-4 py-4 backdrop-blur sm:px-5 lg:px-7 xl:px-9">
-          <div className="mx-auto flex max-w-[1560px] flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div className="min-w-0">
-              <h1 className="text-2xl font-bold text-[#10142D]">
-                Bonjour, {firstName} !
-              </h1>
-              <p className="mt-1 text-sm text-[#596077]">
-                Voici un aperçu complet de ton espace WayaCloud.
-              </p>
+      <div className="min-w-0 lg:pl-[250px] xl:pl-[270px]">
+        <header className="sticky top-0 z-30 border-b border-transparent bg-[#FBFAF8]/90 px-4 py-3 backdrop-blur sm:px-5 lg:px-7 xl:px-9">
+          <div className="mx-auto flex max-w-[1560px] items-center justify-between gap-4">
+            <div className="flex items-center gap-3 min-w-0 lg:min-w-[200px]">
+              <button
+                onClick={() => setMobileMenuOpen(true)}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[#69708A] hover:bg-[#F5F3F0] transition-colors lg:hidden"
+              >
+                <Menu size={20} />
+              </button>
+              <div className="min-w-0">
+                <h1 className="truncate text-xl font-bold text-[#10142D] sm:text-2xl">
+                  Bonjour, {firstName} !
+                </h1>
+                <p className="mt-0.5 truncate text-[13px] text-[#596077] hidden sm:block">
+                  Voici un aperçu complet de ton espace WayaCloud.
+                </p>
+              </div>
             </div>
 
-            <div className="flex min-w-0 flex-1 items-center gap-3 lg:justify-end">
-              <label className="flex h-11 min-w-0 flex-1 items-center gap-3 rounded-card border border-[#E3DFE8] bg-white px-4 shadow-card lg:max-w-[430px]">
-                <Search size={19} className="text-[#516080]" />
+            <div className="flex items-center gap-2 sm:gap-3">
+              <label className="hidden sm:flex h-10 min-w-0 max-w-[320px] flex-1 items-center gap-2.5 rounded-card border border-[#E3DFE8] bg-white px-3.5 shadow-sm">
+                <Search size={17} className="text-[#516080] shrink-0" />
                 <input
-                  className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[#69708A]"
+                  className="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-[#69708A]"
                   placeholder="Rechercher un fichier, un dossier..."
                 />
-                <span className="rounded-md bg-[#F3F1F7] px-2 py-1 text-xs font-semibold text-[#69708A]">
-                  Ctrl + K
+                <span className="hidden rounded-md bg-[#F3F1F7] px-1.5 py-0.5 text-[10px] font-semibold text-[#69708A] lg:inline">
+                  Ctrl+K
                 </span>
               </label>
-              <button className="relative hidden h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#E3DFE8] bg-white shadow-card sm:flex">
-                <Bell size={20} />
-                <span className="absolute right-2 top-1 rounded-pill bg-primary px-1.5 text-[10px] font-bold text-white">
+              <button className="relative hidden sm:flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#E3DFE8] bg-white shadow-sm hover:shadow transition-shadow">
+                <Bell size={18} />
+                <span className="absolute right-1.5 top-1 rounded-full bg-primary px-1 text-[9px] font-bold text-white">
                   3
                 </span>
               </button>
-              <button className="hidden h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#E3DFE8] bg-white shadow-card sm:flex">
-                <CircleHelp size={20} />
+              <button className="hidden sm:flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#E3DFE8] bg-white shadow-sm hover:shadow transition-shadow">
+                <CircleHelp size={18} />
               </button>
               <UploadButton />
             </div>
           </div>
         </header>
 
-        <main className="mx-auto max-w-[1560px] min-w-0 px-4 pb-8 sm:px-5 lg:px-7 xl:px-9">{children}</main>
+        <main className="mx-auto max-w-[1560px] min-w-0 px-4 pb-20 sm:px-5 lg:px-7 xl:px-9 sm:pb-8">
+          <ErrorBoundary>{children}</ErrorBoundary>
+        </main>
+
+        {/* Mobile bottom navigation */}
+        <nav className="fixed bottom-0 left-0 right-0 z-30 flex items-center justify-around border-t border-[#ECE7DF] bg-white/95 backdrop-blur px-2 py-1.5 lg:hidden">
+          {navigation.slice(0, 5).map((item) => {
+            const active = isActive(item.href);
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`flex flex-col items-center gap-0.5 rounded-lg px-3 py-1.5 transition-colors ${
+                  active ? "text-primary" : "text-[#69708A] hover:text-dark"
+                }`}
+              >
+                <item.icon size={20} strokeWidth={active ? 2.2 : 1.8} />
+                <span className="text-[10px] font-semibold leading-none">{item.label.split(" ")[0]}</span>
+              </Link>
+            );
+          })}
+        </nav>
       </div>
     </div>
   );

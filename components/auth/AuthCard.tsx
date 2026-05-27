@@ -1,5 +1,7 @@
 "use client"
 
+import Image from "next/image"
+import Link from "next/link"
 import { cn } from "@/lib/utils"
 
 interface AuthCardProps {
@@ -23,6 +25,18 @@ export function AuthCard({ children, className }: AuthCardProps) {
 export function AuthHeader({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
     <div className="text-center mb-8">
+      <div className="flex justify-center mb-6">
+        <Link href="/" className="inline-block transition-transform hover:scale-105 active:scale-95">
+          <Image 
+            src="/assets/waya-logo.png" 
+            alt="WayaCloud" 
+            width={160} 
+            height={45} 
+            className="object-contain"
+            priority
+          />
+        </Link>
+      </div>
       <h1 className="text-2xl font-bold text-dark tracking-tight">{title}</h1>
       {subtitle && (
         <p className="mt-2 text-sm text-gray">{subtitle}</p>

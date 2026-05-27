@@ -2,6 +2,7 @@
 
 import { useState, useRef } from "react";
 import { Check, Loader2 } from "lucide-react";
+import { storage } from "@/lib/storage";
 
 const WhatsAppIcon = ({ size = 42, className = "" }) => (
   <svg 
@@ -71,14 +72,12 @@ export function WhatsAppBackupCard() {
         url: cleanUrl,
       };
 
-      const existing = localStorage.getItem("wayacloud_uploaded_files");
-      const filesList = existing ? JSON.parse(existing) : [];
+      const filesList = storage.get<unknown[]>("wayacloud_uploaded_files", []);
       filesList.unshift(newFile);
-      localStorage.setItem("wayacloud_uploaded_files", JSON.stringify(filesList));
+      storage.set("wayacloud_uploaded_files", filesList);
 
       window.dispatchEvent(new Event("wayacloud_file_uploaded"));
 
-      // Succès
       setLastBackup("À l'instant");
       setStatus("À jour");
       alert("Sauvegarde WhatsApp terminée avec succès sur Wasabi !");
@@ -96,10 +95,9 @@ export function WhatsAppBackupCard() {
         url: localUrl,
       };
 
-      const existing = localStorage.getItem("wayacloud_uploaded_files");
-      const filesList = existing ? JSON.parse(existing) : [];
+      const filesList = storage.get<unknown[]>("wayacloud_uploaded_files", []);
       filesList.unshift(newFile);
-      localStorage.setItem("wayacloud_uploaded_files", JSON.stringify(filesList));
+      storage.set("wayacloud_uploaded_files", filesList);
 
       window.dispatchEvent(new Event("wayacloud_file_uploaded"));
 
