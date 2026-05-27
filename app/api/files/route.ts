@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
+import { updateStorageUsed } from "@/lib/files";
 import { z } from "zod";
 
 export async function GET() {
@@ -55,5 +56,8 @@ export async function POST(request: Request) {
     .single();
 
   if (error) return NextResponse.json({ message: error.message }, { status: 500 });
+
+  await updateStorageUsed(user.id, source.size_bytes);
+
   return NextResponse.json(newFile);
 }

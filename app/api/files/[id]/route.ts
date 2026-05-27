@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
+import { decreaseStorageUsed } from "@/lib/files";
 import { z } from "zod";
 
 const patchSchema = z.object({
@@ -55,7 +56,7 @@ export async function DELETE(
 
   const { data: file, error: findError } = await supabase
     .from("files")
-    .select("id, object_key, status")
+    .select("id, object_key, size_bytes, status")
     .eq("id", params.id)
     .eq("owner_id", user.id)
     .single();
@@ -68,6 +69,8 @@ export async function DELETE(
     .eq("id", params.id);
 
   if (delError) return NextResponse.json({ message: delError.message }, { status: 500 });
+
+  await decreaseStorageUsed(user.id, file.size_bytes);
 
   return NextResponse.json({ success: true });
 }

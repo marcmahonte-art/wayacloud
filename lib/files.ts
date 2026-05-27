@@ -75,6 +75,26 @@ export async function updateStorageUsed(
   }
 }
 
+export async function decreaseStorageUsed(
+  ownerId: string,
+  bytesToRemove: number
+): Promise<void> {
+  const supabase = createAdminSupabaseClient();
+  const { data: quota } = await supabase
+    .from("storage_quotas")
+    .select("storage_used_bytes")
+    .eq("user_id", ownerId)
+    .maybeSingle();
+
+  if (quota) {
+    const newValue = Math.max(0, quota.storage_used_bytes - bytesToRemove);
+    await supabase
+      .from("storage_quotas")
+      .update({ storage_used_bytes: newValue })
+      .eq("user_id", ownerId);
+  }
+}
+
 export async function generatePublicUrl(objectKey: string): Promise<string> {
   const client = getWasabiClient();
   const command = new GetObjectCommand({
