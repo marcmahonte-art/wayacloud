@@ -67,7 +67,7 @@ export default function CorbeillePage() {
           {items.length > 0 && (
             <button
               onClick={emptyTrash}
-              className="flex items-center gap-2 rounded-lg border border-red-200 bg-white px-4 py-2 text-[13px] font-bold text-red-600 shadow-sm transition-colors hover:bg-red-50"
+              className="flex items-center gap-2 rounded-lg border border-red-200 bg-white px-4 py-3 text-[13px] font-bold text-red-600 shadow-sm transition-colors hover:bg-red-50"
             >
               <Trash2 size={15} />
               Vider la corbeille
@@ -123,15 +123,15 @@ export default function CorbeillePage() {
                     <div className="flex items-center justify-end gap-1">
                       <button
                         onClick={() => restoreItem(item.id)}
-                        className="flex h-8 w-8 items-center justify-center rounded-lg text-green-600 hover:bg-green-50 transition-colors"
-                        title="Restaurer"
+                        className="flex h-10 w-10 items-center justify-center rounded-lg text-green-600 hover:bg-green-50 transition-colors"
+                        aria-label="Restaurer"
                       >
                         <RefreshCcw size={15} />
                       </button>
                       <button
                         onClick={() => deletePermanently(item.id)}
-                        className="flex h-8 w-8 items-center justify-center rounded-lg text-red-500 hover:bg-red-50 transition-colors"
-                        title="Supprimer définitivement"
+                        className="flex h-10 w-10 items-center justify-center rounded-lg text-red-500 hover:bg-red-50 transition-colors"
+                        aria-label="Supprimer définitivement"
                       >
                         <Trash2 size={15} />
                       </button>

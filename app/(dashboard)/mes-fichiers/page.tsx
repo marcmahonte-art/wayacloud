@@ -132,6 +132,7 @@ export default function FilesExplorerPage() {
   }>({ file: null, position: { x: 0, y: 0 }, open: false });
 
   const [shareModalFile, setShareModalFile] = useState<StoredFile | null>(null);
+  const [showSearch, setShowSearch] = useState(false);
   const [showDropZone, setShowDropZone] = useState(false);
   const [loading, setLoading] = useState(true);
   
@@ -362,7 +363,24 @@ export default function FilesExplorerPage() {
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
-            <label className="hidden sm:flex h-10 items-center gap-2.5 rounded-card border border-[#E3DFE8] bg-white px-3.5 shadow-sm max-w-[220px]">
+            <div className="flex sm:hidden h-10 w-10 items-center justify-center rounded-card border border-[#E3DFE8] bg-white shadow-sm text-[#516080]" onClick={() => setShowSearch(true)}>
+              <Search size={16} />
+            </div>
+            {showSearch && (
+              <div className="fixed inset-0 z-50 flex items-start justify-center bg-white/95 backdrop-blur-sm pt-4 px-4 sm:hidden" onClick={() => setShowSearch(false)}>
+                <div className="flex w-full max-w-md items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                  <input
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="flex-1 h-12 rounded-xl border border-[#E3DFE8] bg-white px-4 text-[15px] outline-none placeholder:text-[#69708A]"
+                    placeholder="Rechercher un fichier..."
+                    autoFocus
+                  />
+                  <button onClick={() => setShowSearch(false)} className="h-12 px-4 text-[14px] font-semibold text-primary">Fermer</button>
+                </div>
+              </div>
+            )}
+            <label className="hidden sm:flex h-11 items-center gap-2.5 rounded-card border border-[#E3DFE8] bg-white px-3.5 shadow-sm max-w-[220px]">
               <Search size={16} className="text-[#516080]" />
               <input
                 value={searchQuery}
@@ -477,7 +495,7 @@ export default function FilesExplorerPage() {
                             <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${file.color || "bg-blue-100 text-blue-600"}`}>
                               <IconComp size={16} />
                             </span>
-                            <span className="truncate text-[13px] font-semibold text-dark max-w-[160px] sm:max-w-[280px]">{file.name}</span>
+                            <span className="truncate text-[13px] font-semibold text-dark max-w-[120px] sm:max-w-[200px] md:max-w-[280px]">{file.name}</span>
                           </div>
                         </td>
                         <td className="py-3 px-4 sm:px-5 text-[11px] text-[#596077] font-semibold uppercase hidden sm:table-cell">
@@ -490,20 +508,20 @@ export default function FilesExplorerPage() {
                           {file.time}
                         </td>
                         <td className="py-3 px-4 sm:px-5 text-center">
-                          <div className="flex items-center justify-end gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <div className="flex items-center justify-end gap-1">
                             <button
                               onClick={(e) => { e.stopPropagation(); setFullscreenFile(file); }}
-                              className="p-1.5 text-[#69708A] hover:bg-[#F3EFE9] hover:text-primary rounded-md transition"
-                              title="Ouvrir"
+                              className="flex h-9 w-9 items-center justify-center text-[#69708A] hover:bg-[#F3EFE9] hover:text-primary rounded-lg transition"
+                              aria-label="Ouvrir"
                             >
-                              <Eye size={15} />
+                              <Eye size={16} />
                             </button>
                             <button
                               onClick={(e) => handleClickActions(e, file)}
-                              className="p-1.5 text-[#69708A] hover:bg-[#F3EFE9] hover:text-dark rounded-md transition"
-                              title="Plus d'actions"
+                              className="flex h-9 w-9 items-center justify-center text-[#69708A] hover:bg-[#F3EFE9] hover:text-dark rounded-lg transition"
+                              aria-label="Plus d'actions"
                             >
-                              <MoreVertical size={15} />
+                              <MoreVertical size={16} />
                             </button>
                           </div>
                         </td>

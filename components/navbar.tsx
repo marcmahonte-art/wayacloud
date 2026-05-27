@@ -86,13 +86,13 @@ export function Navbar({ onAuthOpen, onGetStarted }: NavbarProps) {
             transition={{ duration: 0.2 }}
             className="fixed inset-0 top-16 z-40 bg-white/95 backdrop-blur-xl md:hidden"
           >
-            <nav className="flex flex-col items-center gap-6 pt-12">
+            <nav className="flex flex-col items-center gap-2 pt-8">
               {navLinks.map((link) => (
                 <a
                   key={link.label}
                   href={link.href}
                   onClick={() => setMobileOpen(false)}
-                  className="text-lg text-gray hover:text-dark transition-colors"
+                  className="flex items-center justify-center w-full max-w-xs py-3 text-lg text-gray hover:text-dark hover:bg-background rounded-xl transition-colors"
                 >
                   {link.label}
                 </a>

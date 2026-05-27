@@ -325,13 +325,14 @@ export function OnboardingModal({ open, onOpenChange }: OnboardingModalProps) {
                         </label>
                         <div className="relative">
                           <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-helper" />
-                          <input
-                            id="email"
-                            type="email"
-                            {...form.register("email")}
-                            placeholder="vous@exemple.com"
-                            className="flex h-12 w-full rounded-xl border border-border bg-white pl-10 pr-4 text-sm text-dark placeholder:text-helper/70 focus:outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/10 transition-all duration-200"
-                          />
+                            <input
+                              id="email"
+                              type="email"
+                              autoComplete="email"
+                              {...form.register("email")}
+                              placeholder="vous@exemple.com"
+                              className="flex h-12 w-full rounded-xl border border-border bg-white pl-10 pr-4 text-sm text-dark placeholder:text-helper/70 focus:outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/10 transition-all duration-200"
+                            />
                         </div>
                         {form.formState.errors.email && (
                           <p className="text-xs text-red-500">{form.formState.errors.email.message}</p>
@@ -344,13 +345,14 @@ export function OnboardingModal({ open, onOpenChange }: OnboardingModalProps) {
                         </label>
                         <div className="relative">
                           <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-helper" />
-                          <input
-                            id="password"
-                            type="password"
-                            {...form.register("password")}
-                            placeholder="Minimum 8 caractères"
-                            className="flex h-12 w-full rounded-xl border border-border bg-white pl-10 pr-4 text-sm text-dark placeholder:text-helper/70 focus:outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/10 transition-all duration-200"
-                          />
+                            <input
+                              id="password"
+                              type="password"
+                              autoComplete="new-password"
+                              {...form.register("password")}
+                              placeholder="Minimum 8 caractères"
+                              className="flex h-12 w-full rounded-xl border border-border bg-white pl-10 pr-4 text-sm text-dark placeholder:text-helper/70 focus:outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/10 transition-all duration-200"
+                            />
                         </div>
                         {form.formState.errors.password && (
                           <p className="text-xs text-red-500">{form.formState.errors.password.message}</p>
@@ -363,13 +365,15 @@ export function OnboardingModal({ open, onOpenChange }: OnboardingModalProps) {
                         </label>
                         <div className="relative">
                           <Phone size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-helper" />
-                          <input
-                            id="phone"
-                            type="tel"
-                            {...form.register("phone")}
-                            placeholder="+226 XX XX XX XX"
-                            className="flex h-12 w-full rounded-xl border border-border bg-white pl-10 pr-4 text-sm text-dark placeholder:text-helper/70 focus:outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/10 transition-all duration-200"
-                          />
+                            <input
+                              id="phone"
+                              type="tel"
+                              inputMode="tel"
+                              autoComplete="tel"
+                              {...form.register("phone")}
+                              placeholder="+226 XX XX XX XX"
+                              className="flex h-12 w-full rounded-xl border border-border bg-white pl-10 pr-4 text-sm text-dark placeholder:text-helper/70 focus:outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/10 transition-all duration-200"
+                            />
                         </div>
                         {form.formState.errors.phone && (
                           <p className="text-xs text-red-500">{form.formState.errors.phone.message}</p>

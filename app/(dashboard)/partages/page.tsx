@@ -55,7 +55,7 @@ export default function PartagesPage() {
         <div className="flex items-center gap-3">
           <button
             onClick={() => setShareModalFile({ name: "Nouveau partage", url: "", type: "document", color: "bg-blue-100 text-blue-600" })}
-            className="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-[13px] font-bold text-white hover:bg-primary-light transition-colors"
+            className="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-3 text-[13px] font-bold text-white hover:bg-primary-light transition-colors"
           >
             <Share2 size={16} />
             Nouveau partage
@@ -85,7 +85,7 @@ export default function PartagesPage() {
                         <item.icon size={18} />
                       </div>
                       <div className="min-w-0">
-                        <p className="text-[13px] font-bold text-dark truncate max-w-[180px] sm:max-w-[260px]">{item.name}</p>
+                        <p className="text-[13px] font-bold text-dark truncate max-w-[120px] sm:max-w-[180px] md:max-w-[260px]">{item.name}</p>
                         <p className="text-[11px] text-[#69708A]">{item.type}</p>
                       </div>
                     </div>
@@ -113,23 +113,23 @@ export default function PartagesPage() {
                     <div className="flex items-center justify-end gap-1">
                       <button
                         onClick={() => copyLink(item.id, item.name)}
-                        className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
-                        title="Copier le lien"
+                        className="flex h-10 w-10 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+                        aria-label="Copier le lien"
                       >
                         {copiedId === item.id ? <Check size={15} className="text-green-500" /> : <Copy size={15} />}
                       </button>
                       <button
                         onClick={() => openShareModal(item)}
-                        className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
-                        title="Paramètres de partage"
+                        className="flex h-10 w-10 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+                        aria-label="Paramètres de partage"
                       >
                         <Globe size={15} />
                       </button>
                       {item.status === 'Actif' && (
                         <button
                           onClick={() => stopSharing(item.id)}
-                          className="flex h-8 w-8 items-center justify-center rounded-lg text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors"
-                          title="Arrêter le partage"
+                          className="flex h-10 w-10 items-center justify-center rounded-lg text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+                          aria-label="Arrêter le partage"
                         >
                           <StopCircle size={15} />
                         </button>

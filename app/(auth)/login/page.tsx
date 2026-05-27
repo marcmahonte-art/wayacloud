@@ -136,12 +136,14 @@ export default function LoginPage() {
                       key={index}
                       id={`otp-${index}`}
                       type="text"
+                      inputMode="numeric"
+                      autoComplete="one-time-code"
                       maxLength={1}
                       value={digit}
                       onChange={(e) => handleOtpChange(index, e.target.value)}
                       onKeyDown={(e) => handleOtpKeyDown(index, e)}
                       className={cn(
-                        "w-12 h-14 text-center text-lg font-semibold text-dark bg-white border border-border rounded-xl",
+                        "w-11 h-12 sm:w-12 sm:h-14 text-center text-lg font-semibold text-dark bg-white border border-border rounded-xl",
                         "focus:outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/10",
                         "transition-all duration-200"
                       )}

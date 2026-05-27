@@ -186,7 +186,7 @@ export default function DashboardLayout({
           </Link>
         ))}
 
-        <div className="mt-3 flex items-center gap-3 rounded-card p-2 hover:bg-background transition-colors cursor-pointer group" onClick={() => { logout(); router.push("/login"); }}>
+        <div className="mt-3 flex items-center gap-3 rounded-card p-2 hover:bg-background transition-colors cursor-pointer" onClick={() => { logout(); router.push("/login"); }} role="button" tabIndex={0} aria-label="Se déconnecter">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#FFE8D9] text-sm font-bold text-primary">
             {initials}
           </div>
@@ -194,7 +194,7 @@ export default function DashboardLayout({
             <p className="truncate text-[13px] font-bold text-dark">{displayName}</p>
             <p className="truncate text-[11px] text-[#69708A]">{userEmail}</p>
           </div>
-          <LogOut size={15} className="text-[#69708A] opacity-0 group-hover:opacity-100 transition-opacity" />
+          <LogOut size={16} className="text-[#69708A]" />
         </div>
       </div>
     </div>
@@ -233,9 +233,10 @@ export default function DashboardLayout({
             />
             <button
               onClick={() => setMobileMenuOpen(false)}
-              className="flex h-8 w-8 items-center justify-center rounded-lg text-[#69708A] hover:bg-[#F5F3F0] transition-colors"
+              className="flex h-11 w-11 items-center justify-center rounded-lg text-[#69708A] hover:bg-[#F5F3F0] transition-colors"
+              aria-label="Fermer le menu"
             >
-              <X size={18} />
+              <X size={20} />
             </button>
           </div>
           {sidebar}
@@ -248,7 +249,7 @@ export default function DashboardLayout({
             <div className="flex items-center gap-3 min-w-0 lg:min-w-[200px]">
               <button
                 onClick={() => setMobileMenuOpen(true)}
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[#69708A] hover:bg-[#F5F3F0] transition-colors lg:hidden"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-[#69708A] hover:bg-[#F5F3F0] transition-colors lg:hidden"
               >
                 <Menu size={20} />
               </button>
@@ -273,13 +274,13 @@ export default function DashboardLayout({
                   Ctrl+K
                 </span>
               </label>
-              <button className="relative hidden sm:flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#E3DFE8] bg-white shadow-sm hover:shadow transition-shadow">
+              <button className="relative hidden sm:flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#E3DFE8] bg-white shadow-sm hover:shadow transition-shadow">
                 <Bell size={18} />
                 <span className="absolute right-1.5 top-1 rounded-full bg-primary px-1 text-[9px] font-bold text-white">
                   3
                 </span>
               </button>
-              <button className="hidden sm:flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#E3DFE8] bg-white shadow-sm hover:shadow transition-shadow">
+              <button className="hidden sm:flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#E3DFE8] bg-white shadow-sm hover:shadow transition-shadow">
                 <CircleHelp size={18} />
               </button>
               <UploadButton />
@@ -292,19 +293,19 @@ export default function DashboardLayout({
         </main>
 
         {/* Mobile bottom navigation */}
-        <nav className="fixed bottom-0 left-0 right-0 z-30 flex items-center justify-around border-t border-[#ECE7DF] bg-white/95 backdrop-blur px-2 py-1.5 lg:hidden">
-          {navigation.slice(0, 5).map((item) => {
+        <nav className="fixed bottom-0 left-0 right-0 z-30 flex items-center justify-around border-t border-[#ECE7DF] bg-white/95 backdrop-blur px-2 py-2 lg:hidden">
+          {navigation.map((item) => {
             const active = isActive(item.href);
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex flex-col items-center gap-0.5 rounded-lg px-3 py-1.5 transition-colors ${
+                className={`flex flex-col items-center gap-0.5 rounded-lg px-2 py-2 transition-colors min-w-0 ${
                   active ? "text-primary" : "text-[#69708A] hover:text-dark"
                 }`}
               >
-                <item.icon size={20} strokeWidth={active ? 2.2 : 1.8} />
-                <span className="text-[10px] font-semibold leading-none">{item.label.split(" ")[0]}</span>
+                <item.icon size={22} strokeWidth={active ? 2.2 : 1.8} />
+                <span className="text-[11px] font-semibold leading-tight text-center">{item.label.split(" ")[0]}</span>
               </Link>
             );
           })}

@@ -108,6 +108,7 @@ router.push(`/verify-email?email=${encodeURIComponent(data.email)}`)
           label="Mot de passe"
           placeholder="Minimum 8 caractères"
           icon={null}
+          autoComplete={mode === "login" ? "current-password" : "new-password"}
           {...emailForm.register("password")}
         />
         {emailForm.formState.errors.password && (
@@ -156,14 +157,16 @@ router.push(`/verify-email?email=${encodeURIComponent(data.email)}`)
 
   return (
     <form onSubmit={phoneForm.handleSubmit(handlePhoneSubmit)} className="space-y-4">
-      <AuthInput
-        id="phone"
-        type="tel"
-        label="Numéro de téléphone"
-        placeholder="+226 XX XX XX XX"
-        icon={<Phone size={16} />}
-        {...phoneForm.register("phone")}
-      />
+        <AuthInput
+          id="phone"
+          type="tel"
+          inputMode="tel"
+          autoComplete="tel"
+          label="Numéro de téléphone"
+          placeholder="+226 XX XX XX XX"
+          icon={<Phone size={16} />}
+          {...phoneForm.register("phone")}
+        />
       {phoneForm.formState.errors.phone && (
         <p className="text-sm text-red-500 -mt-2">
           {phoneForm.formState.errors.phone.message}
