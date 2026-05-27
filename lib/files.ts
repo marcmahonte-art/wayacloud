@@ -56,11 +56,30 @@ export async function insertFileRecord(params: {
   return data.id;
 }
 
+const DEFAULT_STORAGE_BYTES = 5_368_709_120 // 5 Go
+
+async function ensureStorageQuota(ownerId: string): Promise<void> {
+  const supabase = createAdminSupabaseClient();
+  const { count, error } = await supabase
+    .from("storage_quotas")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", ownerId);
+
+  if (error) return;
+  if (count === 0) {
+    await supabase
+      .from("storage_quotas")
+      .insert({ user_id: ownerId, storage_limit_bytes: DEFAULT_STORAGE_BYTES, storage_used_bytes: 0 });
+  }
+}
+
 export async function updateStorageUsed(
   ownerId: string,
   additionalBytes: number
 ): Promise<void> {
   const supabase = createAdminSupabaseClient();
+  await ensureStorageQuota(ownerId);
+
   const { data: quota } = await supabase
     .from("storage_quotas")
     .select("storage_used_bytes")
@@ -80,6 +99,8 @@ export async function decreaseStorageUsed(
   bytesToRemove: number
 ): Promise<void> {
   const supabase = createAdminSupabaseClient();
+  await ensureStorageQuota(ownerId);
+
   const { data: quota } = await supabase
     .from("storage_quotas")
     .select("storage_used_bytes")

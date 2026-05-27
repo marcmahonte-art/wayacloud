@@ -85,21 +85,53 @@ export async function getProfile(): Promise<ProfileData | null> {
   }
 }
 
+const DEFAULT_STORAGE_BYTES = 5_368_709_120 // 5 Go
+
 export async function getStorageQuota(): Promise<StorageQuota | null> {
   try {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return null
 
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from("storage_quotas")
       .select("id, storage_limit_bytes, storage_used_bytes, plan_name")
       .eq("user_id", user.id)
       .single()
 
-    if (error || !data) return null
+    if (error && error.code !== "PGRST116") return null // not "no rows"
+
+    if (!data) {
+      const { createAdminSupabaseClient } = await import("@/lib/supabase/admin")
+      const admin = createAdminSupabaseClient()
+      const { data: newQuota, error: insertError } = await admin
+        .from("storage_quotas")
+        .insert({
+          user_id: user.id,
+          storage_limit_bytes: DEFAULT_STORAGE_BYTES,
+          storage_used_bytes: 0,
+        })
+        .select("id, storage_limit_bytes, storage_used_bytes, plan_name")
+        .single()
+
+      if (insertError || !newQuota) {
+        return {
+          id: "",
+          storage_limit_bytes: DEFAULT_STORAGE_BYTES,
+          storage_used_bytes: 0,
+          plan_name: "Gratuit",
+        }
+      }
+      return newQuota as StorageQuota
+    }
+
     return data as StorageQuota
   } catch {
-    return null
+    return {
+      id: "",
+      storage_limit_bytes: DEFAULT_STORAGE_BYTES,
+      storage_used_bytes: 0,
+      plan_name: "Gratuit",
+    }
   }
 }
 
