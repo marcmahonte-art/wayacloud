@@ -37,9 +37,9 @@ export function ShareModal({ isOpen, onClose, file }: ShareModalProps) {
         }),
       });
       const data = await res.json();
-      setShareLink(data.url || `https://wayacloud.silk.vercel.app/s/${data.token || "demo"}`);
+      setShareLink(data.url || `https://wayacloud.silk.vercel.app/s/${data.token || ""}`);
     } catch {
-      setShareLink(`https://wayacloud.silk.vercel.app/s/demo-${Date.now()}`);
+      setShareLink(`https://wayacloud.silk.vercel.app/s/error`);
     } finally {
       setIsGenerating(false);
     }

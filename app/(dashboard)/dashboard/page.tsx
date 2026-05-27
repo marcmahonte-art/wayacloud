@@ -388,7 +388,7 @@ export default function DashboardPage() {
         showToast(`Dossier "${folderName}" créé !`);
       }
     } else if (label === "Partager un lien") {
-      navigator.clipboard.writeText("https://wayacloud.silk.vercel.app/share/demo");
+      navigator.clipboard.writeText(window.location.origin + "/partages");
       showToast("Lien copié dans le presse-papiers !");
     } else if (label === "Album partagé") {
       router.push("/albums");

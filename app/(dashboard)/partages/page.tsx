@@ -20,7 +20,7 @@ export default function PartagesPage() {
   const [items, setItems] = useState(sharedItems);
 
   const copyLink = useCallback(async (id: number, name: string) => {
-    const link = `https://wayacloud.silk.vercel.app/s/demo-${id}`;
+    const link = `https://wayacloud.silk.vercel.app/s/lien-${id}`;
     try {
       await navigator.clipboard.writeText(link);
     } catch {
