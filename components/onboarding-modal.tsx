@@ -6,6 +6,8 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Mail, Phone, Lock, User, MapPin, Users, ArrowRight, ArrowLeft, Loader2, Sparkles, Check } from "lucide-react"
 import { useRouter } from "next/navigation"
+import Image from "next/image"
+import Link from "next/link"
 import {
   Dialog,
   DialogContent,
@@ -128,6 +130,19 @@ export function OnboardingModal({ open, onOpenChange }: OnboardingModalProps) {
               className="h-full bg-primary transition-all duration-500 ease-out"
               style={{ width: `${((step + 1) / steps.length) * 100}%` }}
             />
+          </div>
+
+          <div className="flex justify-center mb-6 mt-2">
+            <Link href="/" className="inline-block transition-transform hover:scale-105 active:scale-95">
+              <Image 
+                src="/assets/waya-logo.png" 
+                alt="WayaCloud" 
+                width={140} 
+                height={40} 
+                className="object-contain"
+                priority
+              />
+            </Link>
           </div>
 
           <div className="flex justify-center gap-2 mb-6">
