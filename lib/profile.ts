@@ -92,13 +92,13 @@ export async function getStorageQuota(): Promise<StorageQuota | null> {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return null
 
-    let { data, error } = await supabase
+    const { data, error } = await supabase
       .from("storage_quotas")
       .select("id, storage_limit_bytes, storage_used_bytes, plan_name")
       .eq("user_id", user.id)
-      .single()
+      .maybeSingle()
 
-    if (error && error.code !== "PGRST116") return null // not "no rows"
+    if (error) return null
 
     if (!data) {
       const { createAdminSupabaseClient } = await import("@/lib/supabase/admin")

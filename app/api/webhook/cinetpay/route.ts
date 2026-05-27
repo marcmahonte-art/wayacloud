@@ -65,10 +65,21 @@ export async function POST(request: Request) {
 
       const storageBytes = plan.storage_go * 1073741824;
 
-      await supabase
+      const { count } = await supabase
         .from("storage_quotas")
-        .update({ storage_limit_bytes: storageBytes })
+        .select("id", { count: "exact", head: true })
         .eq("user_id", payment.user_id);
+
+      if (count === 0) {
+        await supabase
+          .from("storage_quotas")
+          .insert({ user_id: payment.user_id, storage_limit_bytes: storageBytes, storage_used_bytes: 0 });
+      } else {
+        await supabase
+          .from("storage_quotas")
+          .update({ storage_limit_bytes: storageBytes })
+          .eq("user_id", payment.user_id);
+      }
 
       if (existingSub) {
         const currentEnd = existingSub.ends_at
