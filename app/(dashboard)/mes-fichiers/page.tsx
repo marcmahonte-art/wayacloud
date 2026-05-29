@@ -281,7 +281,7 @@ export default function FilesExplorerPage() {
           });
         } else {
           const uploadRes = await fetch(data.url!, { method: "PUT", headers: { "Content-Type": file.type || "application/octet-stream" }, body: file });
-          if (!uploadRes.ok) throw new Error("Erreur de transfert");
+          if (!uploadRes.ok) throw new Error(`Erreur de transfert (HTTP ${uploadRes.status})`);
           await fetch("/api/upload/confirm", {
             method: "POST",
             headers: { "content-type": "application/json" },

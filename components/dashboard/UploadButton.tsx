@@ -43,7 +43,7 @@ async function uploadSingleFile(file: File): Promise<void> {
     headers: { "Content-Type": file.type || "application/octet-stream" },
     body: file,
   });
-  if (!uploadRes.ok) throw new Error("Erreur lors de l'envoi vers le stockage.");
+  if (!uploadRes.ok) throw new Error(`Erreur lors de l'envoi vers le stockage (HTTP ${uploadRes.status}).`);
   await fetch("/api/upload/confirm", {
     method: "POST",
     headers: { "content-type": "application/json" },
