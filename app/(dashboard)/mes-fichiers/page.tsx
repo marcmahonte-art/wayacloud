@@ -201,6 +201,7 @@ export default function FilesExplorerPage() {
         await fetch(`/api/files/${f.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ is_trashed: true }) });
       }
     }
+    useStorageStore.getState().refreshAll();
     clearSelection();
   };
 
@@ -214,6 +215,7 @@ export default function FilesExplorerPage() {
     if (f.id) {
       await fetch(`/api/files/${f.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: newName.trim() }) });
     }
+    useStorageStore.getState().refreshAll();
     setRenameModal({ file: null, open: false });
   };
 
@@ -223,6 +225,7 @@ export default function FilesExplorerPage() {
     if (f.id) {
       await fetch(`/api/files/${f.id}`, { method: "DELETE" });
     }
+    useStorageStore.getState().refreshAll();
     setDeleteConfirm({ file: null, open: false });
   };
 
@@ -234,17 +237,17 @@ export default function FilesExplorerPage() {
     if (actionId === "rename") { setRenameModal({ file, open: true }); setContextMenu((prev) => ({ ...prev, open: false })); return; }
     if (actionId === "delete") { setDeleteConfirm({ file, open: true }); setContextMenu((prev) => ({ ...prev, open: false })); return; }
     if (actionId === "trash") {
-      if (file.id) fetch(`/api/files/${file.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ is_trashed: true }) });
+      if (file.id) fetch(`/api/files/${file.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ is_trashed: true }) }).then(() => useStorageStore.getState().refreshAll());
       setContextMenu((prev) => ({ ...prev, open: false }));
       return;
     }
     if (actionId === "favorite") {
-      if (file.id) fetch(`/api/files/${file.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ is_favorite: true }) });
+      if (file.id) fetch(`/api/files/${file.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ is_favorite: true }) }).then(() => useStorageStore.getState().refreshAll());
       setContextMenu((prev) => ({ ...prev, open: false }));
       return;
     }
     if (actionId === "copy") {
-      if (file.id) fetch("/api/files", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ fileId: file.id }) });
+      if (file.id) fetch("/api/files", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ fileId: file.id }) }).then(() => useStorageStore.getState().refreshAll());
       setContextMenu((prev) => ({ ...prev, open: false }));
       return;
     }
@@ -286,6 +289,9 @@ export default function FilesExplorerPage() {
           });
         }
       }
+      useStorageStore.getState().refreshAll();
+    } catch (e: any) {
+      console.error("Upload error:", e);
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
