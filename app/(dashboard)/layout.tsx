@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import {
   Album,
   Bell,
@@ -16,19 +16,24 @@ import {
   Search,
   Share2,
   Trash2,
+  Upload,
+  RefreshCw,
+  Activity,
   UserPlus,
   X,
   Settings,
   LogOut,
   ChevronRight,
+  Loader2,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { UploadButton } from "@/components/dashboard/UploadButton";
 import { useAuth } from "@/providers/AuthProvider";
-import { useRealtimeSync } from "@/hooks/useRealtimeSync";
 import { ErrorBoundary } from "@/components/error/ErrorBoundary";
+import { useStorageStore } from "@/lib/store/storage-store";
+import { useStorageSync } from "@/lib/store/useStorageSync";
 
 const navigation = [
   { href: "/dashboard", label: "Tableau de bord", icon: Home },
@@ -70,13 +75,13 @@ export default function DashboardLayout({
   const router = useRouter();
   const { user, profile, storageQuota: initialQuota, subscription, logout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [liveQuota, setLiveQuota] = useState(initialQuota);
+  useStorageSync(user?.id);
+  const storeQuota = useStorageStore((s) => s.quota);
+  const storeActivities = useStorageStore((s) => s.activities);
 
-  const storageQuota = liveQuota || initialQuota;
-
-  useRealtimeSync(user?.id, {
-    onQuotaChange: (quota: any) => setLiveQuota(quota),
-  });
+  const storageQuota = storeQuota.storage_used_bytes > 0
+    ? storeQuota
+    : initialQuota || { storage_used_bytes: 0, storage_limit_bytes: 5_368_709_120 };
 
   const profileFirstName = typeof profile?.first_name === "string" ? profile.first_name : ""
   const profileLastName = typeof profile?.last_name === "string" ? profile.last_name : ""
@@ -90,10 +95,59 @@ export default function DashboardLayout({
   const initials = getInitials(profileFirstName || null, profileLastName || null, profileFullName || null)
 
   const usedGo = storageQuota ? bytesToGo(storageQuota.storage_used_bytes) : "0"
-  const limitGo = storageQuota ? bytesToGo(storageQuota.storage_limit_bytes) : "20"
+  const limitGo = storageQuota ? bytesToGo(storageQuota.storage_limit_bytes) : "5"
   const usagePercent = storageQuota ? percentUsed(storageQuota.storage_used_bytes, storageQuota.storage_limit_bytes) : 0
 
+  const [searchValue, setSearchValue] = useState("");
+  const [showNotifications, setShowNotifications] = useState(false);
+  const notifRef = useRef<HTMLDivElement>(null);
+
   const isActive = (href: string) => pathname === href || (href === "/dashboard" && pathname === "/");
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (searchValue.trim()) {
+      router.push(`/mes-fichiers?q=${encodeURIComponent(searchValue.trim())}`)
+    }
+  }
+
+  const handleSearchKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      handleSearch(e)
+    }
+  }
+
+  const notifications = storeActivities.slice(0, 10);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
+        setShowNotifications(false)
+      }
+    }
+    if (showNotifications) {
+      document.addEventListener("mousedown", handleClickOutside)
+    }
+    return () => document.removeEventListener("mousedown", handleClickOutside)
+  }, [showNotifications])
+
+  const notifIcon = (type: string) => {
+    switch (type) {
+      case "upload": return Upload
+      case "delete": return Trash2
+      case "restore": return RefreshCw
+      default: return Activity
+    }
+  }
+
+  const notifColor = (type: string) => {
+    switch (type) {
+      case "upload": return "bg-green-100 text-green-700"
+      case "delete": return "bg-red-100 text-red-600"
+      case "restore": return "bg-blue-100 text-blue-600"
+      default: return "bg-slate-100 text-slate-600"
+    }
+  }
 
   const sidebar = (
     <div className="flex h-full flex-col">
@@ -264,25 +318,82 @@ export default function DashboardLayout({
             </div>
 
             <div className="flex items-center gap-2 sm:gap-3">
-              <label className="hidden sm:flex h-10 min-w-0 max-w-[320px] flex-1 items-center gap-2.5 rounded-card border border-[#E3DFE8] bg-white px-3.5 shadow-sm">
+              <form onSubmit={handleSearch} className="hidden sm:flex h-10 min-w-0 max-w-[320px] flex-1 items-center gap-2.5 rounded-card border border-[#E3DFE8] bg-white px-3.5 shadow-sm">
                 <Search size={17} className="text-[#516080] shrink-0" />
                 <input
+                  value={searchValue}
+                  onChange={(e) => setSearchValue(e.target.value)}
+                  onKeyDown={handleSearchKeyDown}
                   className="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-[#69708A]"
                   placeholder="Rechercher un fichier, un dossier..."
                 />
                 <span className="hidden rounded-md bg-[#F3F1F7] px-1.5 py-0.5 text-[10px] font-semibold text-[#69708A] lg:inline">
                   Ctrl+K
                 </span>
-              </label>
-              <button className="relative hidden sm:flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#E3DFE8] bg-white shadow-sm hover:shadow transition-shadow">
-                <Bell size={18} />
-                <span className="absolute right-1.5 top-1 rounded-full bg-primary px-1 text-[9px] font-bold text-white">
-                  3
-                </span>
-              </button>
-              <button className="hidden sm:flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#E3DFE8] bg-white shadow-sm hover:shadow transition-shadow">
+              </form>
+              <div className="relative" ref={notifRef}>
+                <button
+                  onClick={() => setShowNotifications(!showNotifications)}
+                  className="relative hidden sm:flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#E3DFE8] bg-white shadow-sm hover:shadow transition-shadow"
+                >
+                  <Bell size={18} />
+                  {notifications.length > 0 && (
+                    <span className="absolute right-1.5 top-1 rounded-full bg-primary px-1 text-[9px] font-bold text-white">
+                      {notifications.length > 9 ? "9+" : notifications.length}
+                    </span>
+                  )}
+                </button>
+                {showNotifications && (
+                  <div className="absolute right-0 top-full mt-2 z-50 w-[340px] rounded-xl border border-[#ECE7DF] bg-white shadow-lg overflow-hidden">
+                    <div className="flex items-center justify-between border-b border-[#ECE7DF] px-4 py-3 bg-[#FBF8FF]">
+                      <h3 className="text-sm font-bold text-dark">Notifications</h3>
+                      <button onClick={() => setShowNotifications(false)} className="text-[#69708A] hover:text-dark transition-colors">
+                        <X size={16} />
+                      </button>
+                    </div>
+                    <div className="max-h-[350px] overflow-y-auto divide-y divide-[#F0ECE6]">
+                      {notifications.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-8 text-center">
+                          <Bell size={24} className="text-slate-300" />
+                          <p className="mt-2 text-[13px] text-slate-500 font-medium">Aucune notification</p>
+                        </div>
+                      ) : (
+                        notifications.slice(0, 8).map((n: any) => {
+                          const NIcon = notifIcon(n.type)
+                          const NColor = notifColor(n.type)
+                          return (
+                            <div key={n.id} className="flex items-start gap-3 px-4 py-3 hover:bg-[#FDFCFB] transition-colors cursor-pointer">
+                              <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${NColor}`}>
+                                <NIcon size={14} />
+                              </span>
+                              <div className="min-w-0 flex-1">
+                                <p className="text-[13px] font-bold text-dark leading-tight">{n.title}</p>
+                                {n.description && <p className="text-[11px] text-[#69708A] mt-0.5">{n.description}</p>}
+                                <p className="text-[10px] text-[#9CA3AF] mt-1 font-medium">
+                                  {new Date(n.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                                </p>
+                              </div>
+                            </div>
+                          )
+                        })
+                      )}
+                    </div>
+                    <Link
+                      href="/parametres"
+                      onClick={() => setShowNotifications(false)}
+                      className="block border-t border-[#ECE7DF] px-4 py-2.5 text-center text-[12px] font-bold text-primary hover:bg-[#FBF8FF] transition-colors"
+                    >
+                      Voir toutes les notifications
+                    </Link>
+                  </div>
+                )}
+              </div>
+              <Link
+                href="/parametres"
+                className="hidden sm:flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#E3DFE8] bg-white shadow-sm hover:shadow transition-shadow"
+              >
                 <CircleHelp size={18} />
-              </button>
+              </Link>
               <UploadButton />
             </div>
           </div>

@@ -32,8 +32,8 @@ export function ErrorFallback({ error, reset, title, message }: ErrorFallbackPro
             </pre>
           </details>
         )}
-        <div className="flex items-center justify-center gap-3">
-          {reset && (
+        {reset && (
+          <div className="flex items-center justify-center">
             <button
               onClick={reset}
               className="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-bold text-white hover:bg-primary-light transition-colors"
@@ -41,14 +41,8 @@ export function ErrorFallback({ error, reset, title, message }: ErrorFallbackPro
               <RefreshCw size={16} />
               Réessayer
             </button>
-          )}
-          <button
-            onClick={() => window.location.reload()}
-            className="inline-flex items-center gap-2 rounded-lg border border-[#EAE5E0] bg-white px-5 py-2.5 text-sm font-bold text-dark hover:bg-[#F5F3F0] transition-colors"
-          >
-            Rafraîchir la page
-          </button>
-        </div>
+          </div>
+        )}
       </div>
     </div>
   )

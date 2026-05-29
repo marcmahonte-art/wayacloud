@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server"
+import { getAuthCallbackUrl } from "@/lib/auth/url"
 
 export async function POST(request: NextRequest) {
   try {
@@ -22,7 +23,7 @@ export async function POST(request: NextRequest) {
       type: "signup",
       email,
       options: {
-        emailRedirectTo: `${request.nextUrl.origin}/auth/callback`,
+        emailRedirectTo: getAuthCallbackUrl("/dashboard"),
       },
     })
 

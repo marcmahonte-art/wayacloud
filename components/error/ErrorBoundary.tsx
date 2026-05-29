@@ -40,14 +40,8 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
             </div>
             <h3 className="text-lg font-bold text-dark mb-2">Une erreur est survenue</h3>
             <p className="text-sm text-[#69708A] mb-4">
-              {this.state.error?.message || "Veuillez rafraîchir la page et réessayer."}
+              {this.state.error?.message || "Essayez de naviguer vers une autre page."}
             </p>
-            <button
-              onClick={() => window.location.reload()}
-              className="rounded-lg bg-primary px-5 py-2.5 text-sm font-bold text-white hover:bg-primary-light transition-colors"
-            >
-              Rafraîchir
-            </button>
           </div>
         </div>
       )

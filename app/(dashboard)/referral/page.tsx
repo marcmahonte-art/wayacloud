@@ -1,6 +1,7 @@
 "use client";
 
 import { useAuth } from "@/providers/AuthProvider";
+import { SocialIcon } from "@/components/ui/SocialIcon";
 import { Gift, Share2, Users, Zap } from "lucide-react";
 import { useMemo } from "react";
 
@@ -61,7 +62,7 @@ export default function ReferralPage() {
         onClick={shareWA}
         className="flex w-full items-center justify-center gap-3 rounded-btn bg-[#25D366] py-4 text-lg font-bold text-white shadow-lg transition hover:bg-[#20BD5A]"
       >
-        <Share2 size={22} />
+        <SocialIcon network="whatsapp" size={24} />
         Partager sur WhatsApp
       </button>
 

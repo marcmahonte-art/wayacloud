@@ -109,6 +109,7 @@ export async function getStorageQuota(): Promise<StorageQuota | null> {
           user_id: user.id,
           storage_limit_bytes: DEFAULT_STORAGE_BYTES,
           storage_used_bytes: 0,
+          plan_name: "Gratuit",
         })
         .select("id, storage_limit_bytes, storage_used_bytes, plan_name")
         .single()
@@ -124,7 +125,19 @@ export async function getStorageQuota(): Promise<StorageQuota | null> {
       return newQuota as StorageQuota
     }
 
-    return data as StorageQuota
+    if (!data.plan_name || data.plan_name === "Gratuit") {
+      if (data.storage_limit_bytes !== DEFAULT_STORAGE_BYTES) {
+        const { createAdminSupabaseClient } = await import("@/lib/supabase/admin")
+        const admin = createAdminSupabaseClient()
+        await admin
+          .from("storage_quotas")
+          .update({ storage_limit_bytes: DEFAULT_STORAGE_BYTES, plan_name: "Gratuit" })
+          .eq("id", data.id)
+      }
+      return { ...data, storage_limit_bytes: DEFAULT_STORAGE_BYTES, plan_name: "Gratuit" } as StorageQuota
+    }
+
+    return { ...data, plan_name: data.plan_name || "Gratuit" } as StorageQuota
   } catch {
     return {
       id: "",

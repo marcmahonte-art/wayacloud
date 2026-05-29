@@ -1,12 +1,13 @@
 "use client";
 
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { computeFileSha256 } from "@/lib/upload/fileHash";
 import { useAuth } from "@/providers/AuthProvider";
-import { useRealtimeSync } from "@/hooks/useRealtimeSync";
+import { useStorageStore } from "@/lib/store/storage-store";
+import { useStorageSync } from "@/lib/store/useStorageSync";
 import { SkeletonDashboard } from "@/components/ui/Skeletons";
-import { storage } from "@/lib/storage";
+import { SocialIcon } from "@/components/ui/SocialIcon";
 import {
   BarChart3,
   Bot,
@@ -14,16 +15,13 @@ import {
   ChevronRight,
   CloudUpload,
   Crown,
-  FileImage,
-  FileSpreadsheet,
   FileText,
   Folder,
   Globe2,
-  LockKeyhole,
   Loader2,
+  LockKeyhole,
   MessageCircle,
   Mic2,
-  MoreVertical,
   Play,
   Search,
   Send,
@@ -31,18 +29,18 @@ import {
   ShieldAlert,
   Smartphone,
   Sparkles,
-  Trash2,
   Users,
-  UserPlus,
   Wallet,
   X,
-  ExternalLink,
   Zap,
   Target,
 } from "lucide-react";
 import { formatAmountFcfa, formatStorageGo } from "@/lib/formatters";
 import Link from "next/link";
 import { WhatsAppBackupCard } from "@/components/dashboard/WhatsAppBackupCard";
+import { StorageQuotaBar } from "@/components/dashboard/StorageQuotaBar";
+import { StorageByCategory } from "@/components/dashboard/StorageByCategory";
+import { ActivityFeed } from "@/components/dashboard/ActivityFeed";
 import { RecentFilesList } from "@/components/dashboard/RecentFilesList";
 
 const quickActions = [
@@ -158,83 +156,25 @@ const tools = [
   },
 ];
 
-function bytesToGo(bytes: number): string {
-  return (bytes / (1024 * 1024 * 1024)).toFixed(1)
-}
-
-function percentUsed(used: number, total: number): number {
-  if (total === 0) return 0
-  return Math.min(100, Math.round((used / total) * 100))
-}
-
-const ACTIVITY_ICONS: Record<string, { icon: any; color: string }> = {
-  upload: { icon: CloudUpload, color: "text-violet-600" },
-  delete: { icon: X, color: "text-red-500" },
-  trash: { icon: Trash2, color: "text-amber-500" },
-  restore: { icon: Check, color: "text-green-600" },
-  share: { icon: Share2, color: "text-blue-600" },
-  rename: { icon: FileText, color: "text-sky-600" },
-  folder_create: { icon: Folder, color: "text-amber-500" },
-  ai_action: { icon: Bot, color: "text-violet-600" },
-  backup: { icon: MessageCircle, color: "text-wa-green" },
-  catalog_backup: { icon: MessageCircle, color: "text-wa-green" },
-  payment: { icon: Wallet, color: "text-green-600" },
-  subscription: { icon: Crown, color: "text-primary" },
-  signup: { icon: UserPlus, color: "text-blue-600" },
-};
-
-function formatActivityTime(dateStr: string): string {
-  const now = Date.now();
-  const date = new Date(dateStr).getTime();
-  const diffMs = now - date;
-  const mins = Math.floor(diffMs / 60000);
-  if (mins < 1) return "À l'instant";
-  if (mins < 60) return `Il y a ${mins} min`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `Il y a ${hours} h`;
-  const days = Math.floor(hours / 24);
-  if (days < 7) return `Il y a ${days} j`;
-  return new Date(dateStr).toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
-}
-
 export default function DashboardPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
-  const { user, storageQuota: initialQuota, subscription, remainingTrialDays, profileLoading, refresh } = useAuth();
+  const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [shareUrl, setShareUrl] = useState("");
+  const { user, subscription, remainingTrialDays, profileLoading } = useAuth();
   const [isUploading, setIsUploading] = useState(false);
   const [toast, setToast] = useState<{ show: boolean; message: string; type: "success" | "info" | "error" }>({ show: false, message: "", type: "success" });
   const [aiInput, setAiInput] = useState("");
   const [aiMessages, setAiMessages] = useState<{ role: "user" | "assistant"; text: string }[]>([]);
   const [aiLoading, setAiLoading] = useState(false);
-  const [activities, setActivities] = useState<any[]>([]);
-  const [liveQuota, setLiveQuota] = useState(initialQuota);
-  const [activityLoading, setActivityLoading] = useState(true);
-
-  const storageQuota = liveQuota || initialQuota;
-
-  useRealtimeSync(user?.id, {
-    onActivity: (activity: any) => setActivities((prev) => [activity, ...(Array.isArray(prev) ? prev : [])].slice(0, 50)),
-    onQuotaChange: (quota: any) => setLiveQuota(quota),
-  });
-
-  // Load initial activities
-  useEffect(() => {
-    if (!user?.id) return;
-    fetch("/api/activities?limit=10")
-      .then((r) => { if (!r.ok) throw new Error(); return r.json(); })
-      .then((data) => { setActivities(Array.isArray(data) ? data : []); setActivityLoading(false); })
-      .catch(() => setActivityLoading(false));
-  }, [user?.id]);
+  useStorageSync(user?.id);
+  const storeQuota = useStorageStore((s) => s.quota);
 
   const showToast = (message: string, type: "success" | "info" | "error" = "success") => {
     setToast({ show: true, message, type });
     setTimeout(() => setToast({ show: false, message: "", type: "success" }), 3000);
   };
 
-  const usedGo = storageQuota ? bytesToGo(storageQuota.storage_used_bytes) : "0"
-  const limitGo = storageQuota ? bytesToGo(storageQuota.storage_limit_bytes) : "5"
-  const usagePercent = storageQuota ? percentUsed(storageQuota.storage_used_bytes, storageQuota.storage_limit_bytes) : 0
-  const remainingGo = storageQuota ? bytesToGo(storageQuota.storage_limit_bytes - storageQuota.storage_used_bytes) : "5"
   const isTrial = remainingTrialDays > 0
   const isFree = !subscription || subscription.plan_name === "Gratuit" || subscription.plan_price === 0
   const planName = isFree ? "Gratuit" : subscription?.plan_name || "Gratuit"
@@ -325,35 +265,11 @@ export default function DashboardPage() {
         url: fileUrl,
       };
 
-      const filesList = storage.get<unknown[]>("wayacloud_uploaded_files", []);
-      filesList.unshift(newFile);
-      storage.set("wayacloud_uploaded_files", filesList);
-
-      window.dispatchEvent(new Event("wayacloud_file_uploaded"));
       showToast("Fichier importé avec succès !");
 
     } catch (error: any) {
-      console.warn("Erreur d'import, bascule vers le mode démo local :", error);
-      
-      const localUrl = URL.createObjectURL(file);
-      const category = getFileTypeCategory(file.type, file.name);
-      
-      const newFile = {
-        name: file.name,
-        meta: `${(file.size / (1024 * 1024)).toFixed(1)} Mo • ${category === 'PDF' ? 'PDF' : category + 's'}`,
-        time: "À l'instant",
-        iconName: getFileTypeIconName(category),
-        color: getFileTypeColor(category),
-        type: category.toLowerCase(),
-        url: localUrl,
-      };
-
-      const filesList = storage.get<unknown[]>("wayacloud_uploaded_files", []);
-      filesList.unshift(newFile);
-      storage.set("wayacloud_uploaded_files", filesList);
-
-      window.dispatchEvent(new Event("wayacloud_file_uploaded"));
-      showToast("Fichier importé en mode démo", "info");
+      const msg = error?.message || "Erreur lors de l'import du fichier";
+      showToast(msg, "error");
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) {
@@ -366,30 +282,16 @@ export default function DashboardPage() {
     if (label === "Importer") {
       fileInputRef.current?.click();
     } else if (label === "Sauvegarder WhatsApp") {
-      router.push("/whatsapp");
+      router.push("/whatsapp?scan=1");
     } else if (label === "Nouveau dossier") {
       const folderName = prompt("Entrez le nom du nouveau dossier :");
       if (folderName) {
-        const newFolder = {
-          name: folderName,
-          meta: "Dossier",
-          time: "À l'instant",
-          iconName: "Folder",
-          color: "bg-amber-100 text-amber-600",
-          type: "other",
-          url: "#",
-        };
-
-        const filesList = storage.get<unknown[]>("wayacloud_uploaded_files", []);
-        filesList.unshift(newFolder);
-        storage.set("wayacloud_uploaded_files", filesList);
-
-        window.dispatchEvent(new Event("wayacloud_file_uploaded"));
-        showToast(`Dossier "${folderName}" créé !`);
+        showToast(`Fonctionnalité de création de dossier bientôt disponible`);
       }
     } else if (label === "Partager un lien") {
-      navigator.clipboard.writeText(window.location.origin + "/partages");
-      showToast("Lien copié dans le presse-papiers !");
+      const url = window.location.origin + "/partages";
+      setShareUrl(url);
+      setShareModalOpen(true);
     } else if (label === "Album partagé") {
       router.push("/albums");
     }
@@ -417,43 +319,23 @@ export default function DashboardPage() {
     }
   };
 
-  if (profileLoading && !storageQuota) {
+  if (profileLoading && !storeQuota.storage_used_bytes) {
     return <SkeletonDashboard />;
   }
 
   return (
     <div className="grid min-w-0 gap-6 2xl:grid-cols-[minmax(0,1fr)_390px]">
       <input
-        type="file"
-        ref={fileInputRef}
-        onChange={handleUpload}
-        className="hidden"
-        disabled={isUploading}
-      />
+  type="file"
+  multiple
+  ref={fileInputRef}
+  onChange={handleUpload}
+  className="hidden"
+  disabled={isUploading}
+/>
       <section className="min-w-0 space-y-6">
         <div className="grid min-w-0 items-stretch gap-5 md:grid-cols-2 xl:grid-cols-3">
-          <article className="min-h-[220px] overflow-hidden rounded-card bg-gradient-to-br from-primary to-[#FF7A00] p-6 text-white shadow-card md:col-span-2 xl:col-span-1">
-            <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
-              <div className="min-w-0">
-                <p className="text-sm font-bold">Espace de stockage</p>
-                <p className="mt-5 text-4xl font-bold">{formatStorageGo(Number(usedGo))}</p>
-                <p className="mt-2 text-base font-semibold">sur {formatStorageGo(Number(limitGo))} utilisés</p>
-              </div>
-              <div className="relative flex h-28 w-28 shrink-0 items-center justify-center rounded-full border-[14px] border-white/30">
-                <div className="absolute inset-[-14px] rounded-full border-[14px] border-white border-l-white/30 border-t-white/30" />
-                <span className="relative text-xl font-bold">{usagePercent}%</span>
-              </div>
-            </div>
-            <div className="mt-6 h-1.5 rounded-pill bg-white/25">
-              <div className="h-full rounded-pill bg-white" style={{ width: `${usagePercent}%` }} />
-            </div>
-            <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
-              <p className="text-sm font-medium">{remainingGo} Go disponibles</p>
-              <button onClick={() => router.push("/abonnement")} className="rounded-btn border border-white/50 px-4 py-2 text-sm font-semibold hover:bg-white/10 transition-colors">
-                Voir les détails →
-              </button>
-            </div>
-          </article>
+          <StorageQuotaBar />
 
           <WhatsAppBackupCard />
 
@@ -468,7 +350,7 @@ export default function DashboardPage() {
                   </p>
                 )}
                 <p className="mt-3 text-sm text-[#596077]">
-                  {limitGo} Go · {planPrice}
+                  {formatStorageGo(Number((storeQuota.storage_limit_bytes / (1024 * 1024 * 1024)).toFixed(1)))} Go · {planPrice}
                 </p>
                 {renewalDate && (
                   <>
@@ -522,6 +404,58 @@ export default function DashboardPage() {
             })}
           </div>
         </section>
+        {shareModalOpen && (
+          <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+            <div className="bg-white rounded-lg p-6 shadow-lg max-w-sm w-full">
+              <h3 className="text-lg font-bold mb-4">Partager le lien</h3>
+              <div className="flex flex-col space-y-3">
+                <button
+                  className="flex items-center justify-center gap-2 rounded-btn bg-red-600 text-white py-2"
+                  onClick={() => {
+                    window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=&su=Découvrez%20cette%20page&body=${encodeURIComponent(shareUrl)}`, "_blank");
+                    setShareModalOpen(false);
+                  }}
+                >
+                  <SocialIcon network="gmail" size={18} /> Gmail
+                </button>
+                <button
+                  className="flex items-center justify-center gap-2 rounded-btn bg-blue-600 text-white py-2"
+                  onClick={() => {
+                    window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`, "_blank");
+                    setShareModalOpen(false);
+                  }}
+                >
+                  <SocialIcon network="facebook" size={18} /> Facebook
+                </button>
+                <button
+                  className="flex items-center justify-center gap-2 rounded-btn bg-[#25D366] text-white py-2"
+                  onClick={() => {
+                    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(shareUrl)}`, "_blank");
+                    setShareModalOpen(false);
+                  }}
+                >
+                  <SocialIcon network="whatsapp" size={18} /> WhatsApp
+                </button>
+                <button
+                  className="flex items-center justify-center gap-2 rounded-btn bg-gray-200 text-gray-800 py-2"
+                  onClick={() => {
+                    navigator.clipboard.writeText(shareUrl);
+                    showToast("Lien copié dans le presse-papiers !");
+                    setShareModalOpen(false);
+                  }}
+                >
+                  📋 Copier le lien
+                </button>
+                <button
+                  className="mt-2 text-sm text-gray-500 underline"
+                  onClick={() => setShareModalOpen(false)}
+                >
+                  Annuler
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         <section className="rounded-card border border-[#ECE7DF] bg-white p-5 shadow-card">
           <h2 className="text-lg font-bold text-dark">Outils intelligents ✨</h2>
@@ -560,66 +494,16 @@ export default function DashboardPage() {
 
         <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.85fr)]">
           <article className="min-w-0 rounded-card border border-[#ECE7DF] bg-white p-5 shadow-card">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-bold">Aperçu de l&apos;espace</h2>
-              <button className="text-xs font-semibold text-[#69708A]">Cette semaine</button>
-            </div>
-            <div className="mt-6 h-[140px] rounded-card bg-gradient-to-t from-orange-50 to-white p-4">
-              <div className="flex h-full items-end gap-3">
-                {[32, 48, 50, 63, 62, 74, 72, 82, 83, 96].map((height, index) => (
-                  <div key={index} className="flex flex-1 flex-col justify-end">
-                    <div
-                      className="rounded-t-md bg-primary"
-                      style={{ height: `${height}%`, opacity: 0.3 + index * 0.06 }}
-                    />
-                  </div>
-                ))}
-              </div>
+            <h2 className="text-lg font-bold">Répartition par type</h2>
+            <div className="mt-4">
+              <StorageByCategory />
             </div>
           </article>
 
           <article className="min-w-0 rounded-card border border-[#ECE7DF] bg-white p-5 shadow-card">
             <h2 className="text-lg font-bold">Activité récente</h2>
-            <div className="mt-4 space-y-4">
-              {activityLoading ? (
-                <div className="space-y-4">
-                  {[1,2,3,4].map((i) => (
-                    <div key={i} className="flex items-center gap-3 animate-pulse">
-                      <div className="h-5 w-5 rounded-full bg-[#ECE7DF]" />
-                      <div className="flex-1 space-y-1.5">
-                        <div className="h-3.5 w-32 rounded bg-[#ECE7DF]" />
-                        <div className="h-3 w-24 rounded bg-[#F0ECE6]" />
-                      </div>
-                      <div className="h-3 w-16 rounded bg-[#F0ECE6]" />
-                    </div>
-                  ))}
-                </div>
-              ) : !Array.isArray(activities) || activities.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-8 text-center">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#F5F3F0]">
-                    <Zap size={20} className="text-[#C8C0B5]" />
-                  </div>
-                  <p className="mt-3 text-[13px] font-semibold text-slate-500">Aucune activité récente</p>
-                  <p className="text-xs text-slate-400 mt-1">Importez un fichier pour commencer</p>
-                </div>
-              ) : (
-                (Array.isArray(activities) ? activities : []).slice(0, 8).map((item: any) => {
-                  const actIcon = ACTIVITY_ICONS[item.type] || { icon: Zap, color: "text-[#69708A]" };
-                  const Icon = actIcon.icon;
-                  return (
-                    <div key={item.id} className="grid min-w-0 grid-cols-[24px_minmax(0,1fr)_auto] gap-3">
-                      <Icon className={actIcon.color} size={18} />
-                      <div className="min-w-0">
-                        <p className="text-sm font-bold truncate">{item.title}</p>
-                        {item.description && (
-                          <p className="text-xs text-[#69708A] truncate">{item.description}</p>
-                        )}
-                      </div>
-                      <p className="text-xs text-[#9CA3AF] whitespace-nowrap">{formatActivityTime(item.created_at)}</p>
-                    </div>
-                  );
-                })
-              )}
+            <div className="mt-4">
+              <ActivityFeed />
             </div>
           </article>
         </div>

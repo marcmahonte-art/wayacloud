@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
-  const supabase = createAdminSupabaseClient();
+  const supabase = createServerSupabaseClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ message: "Non authentifié." }, { status: 401 });
 
@@ -13,7 +14,8 @@ export async function GET(request: Request) {
   const offset = parseInt(searchParams.get("offset") || "0");
   const type = searchParams.get("type");
 
-  let query = supabase
+  const admin = createAdminSupabaseClient();
+  let query = admin
     .from("activities")
     .select("*")
     .eq("user_id", user.id)

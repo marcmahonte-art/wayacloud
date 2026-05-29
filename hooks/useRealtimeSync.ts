@@ -2,96 +2,53 @@
 
 import { useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
-import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
+import { useStorageStore, type FileEntry, type ActivityEntry } from "@/lib/store/storage-store";
 
-interface RealtimeSyncOptions {
-  onActivity?: (activity: any) => void;
-  onQuotaChange?: (quota: any) => void;
-  onFileChange?: (file: any) => void;
-}
-
-export function useRealtimeSync(userId: string | undefined, options: RealtimeSyncOptions) {
-  const supabaseRef = useRef<ReturnType<typeof createClient> | null>(null);
-  const optionsRef = useRef(options);
-  optionsRef.current = options;
+export function useRealtimeSync(userId: string | undefined) {
+  const stableUserId = useRef(userId);
+  stableUserId.current = userId;
 
   useEffect(() => {
-    if (!userId) return;
+    const uid = stableUserId.current;
+    if (!uid) return;
 
-    let destroyed = false;
+    const supabase = createClient();
+    const store = useStorageStore;
 
-    try {
-      if (!supabaseRef.current) {
-        supabaseRef.current = createClient();
-      }
-      const supabase = supabaseRef.current;
+    const filesChannel = supabase
+      .channel("files-changes")
+      .on("postgres_changes",
+        { event: "*", schema: "public", table: "files", filter: `owner_id=eq.${uid}` },
+        (payload) => {
+          if (payload.eventType === "INSERT") store.getState().addFile(payload.new as FileEntry);
+          if (payload.eventType === "UPDATE") store.getState().updateFile(payload.new.id, payload.new as Partial<FileEntry>);
+          if (payload.eventType === "DELETE") store.getState().removeFile(payload.old.id);
+        },
+      )
+      .subscribe();
 
-      const handleActivity = (payload: RealtimePostgresChangesPayload<any>) => {
-        if (payload.eventType === "INSERT" && optionsRef.current.onActivity) {
-          optionsRef.current.onActivity(payload.new);
-        }
-      };
+    const quotaChannel = supabase
+      .channel("quota-changes")
+      .on("postgres_changes",
+        { event: "UPDATE", schema: "public", table: "storage_quotas", filter: `user_id=eq.${uid}` },
+        (payload) => {
+          store.getState().setQuota(payload.new);
+        },
+      )
+      .subscribe();
 
-      const handleQuota = (payload: RealtimePostgresChangesPayload<any>) => {
-        if (payload.eventType === "UPDATE" && optionsRef.current.onQuotaChange && payload.new.user_id === userId) {
-          optionsRef.current.onQuotaChange(payload.new);
-        }
-      };
+    const activityChannel = supabase
+      .channel("activity-feed")
+      .on("postgres_changes",
+        { event: "INSERT", schema: "public", table: "activities", filter: `user_id=eq.${uid}` },
+        (payload) => store.getState().addActivity(payload.new as ActivityEntry),
+      )
+      .subscribe();
 
-      const handleFile = (payload: RealtimePostgresChangesPayload<any>) => {
-        if (!optionsRef.current.onFileChange) return;
-        if (payload.eventType === "INSERT" && payload.new.owner_id === userId) {
-          optionsRef.current.onFileChange(payload.new);
-        }
-        if (payload.eventType === "UPDATE" && payload.new.owner_id === userId) {
-          optionsRef.current.onFileChange(payload.new);
-        }
-        if (payload.eventType === "DELETE" && payload.old?.owner_id === userId) {
-          optionsRef.current.onFileChange(payload.old);
-        }
-      };
-
-      const activitiesSub = supabase
-        .channel(`realtime-activities-${userId}`)
-        .on(
-          "postgres_changes",
-          { event: "INSERT", schema: "public", table: "activities", filter: `user_id=eq.${userId}` },
-          handleActivity,
-        )
-        .subscribe();
-
-      const quotaSub = supabase
-        .channel(`realtime-quota-${userId}`)
-        .on(
-          "postgres_changes",
-          { event: "UPDATE", schema: "public", table: "storage_quotas", filter: `user_id=eq.${userId}` },
-          handleQuota,
-        )
-        .subscribe();
-
-      const filesSub = supabase
-        .channel(`realtime-files-${userId}`)
-        .on(
-          "postgres_changes",
-          { event: "*", schema: "public", table: "files", filter: `owner_id=eq.${userId}` },
-          handleFile,
-        )
-        .subscribe();
-
-      return () => {
-        destroyed = true;
-        try {
-          supabase.removeChannel(activitiesSub);
-        } catch {}
-        try {
-          supabase.removeChannel(quotaSub);
-        } catch {}
-        try {
-          supabase.removeChannel(filesSub);
-        } catch {}
-      };
-    } catch (err) {
-      console.warn("useRealtimeSync: subscription error", err);
-    }
+    return () => {
+      supabase.removeChannel(filesChannel);
+      supabase.removeChannel(quotaChannel);
+      supabase.removeChannel(activityChannel);
+    };
   }, [userId]);
 }

@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/client"
 import type { LoginInput, PhoneInput, OnboardingInput, AuthError } from "./types"
+import { getAppUrl, getAuthCallbackUrl } from "./url"
 
 const supabase = createClient()
 
@@ -12,6 +13,9 @@ export async function signInWithEmail(input: LoginInput): Promise<{ error?: Auth
   })
 
   if (error) {
+    if (error.message === "Email not confirmed") {
+      return { error: { message: "Veuillez confirmer votre adresse email", code: error.code } }
+    }
     return {
       error: {
         message: getAuthErrorMessage(error.message),
@@ -26,56 +30,86 @@ export async function signInWithEmail(input: LoginInput): Promise<{ error?: Auth
 export async function signUpWithEmail(input: LoginInput & { referredBy?: string }): Promise<{ error?: AuthError }> {
   const { email, password, referredBy } = input
 
-  const metadata: Record<string, string> = {};
-  if (referredBy) metadata.referred_by = referredBy;
+  const metadata: Record<string, string> = {}
+  if (referredBy) metadata.referred_by = referredBy
 
-  const { error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: { data: metadata },
-  })
+  try {
+    const res = await fetch("/api/auth/signup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email,
+        password,
+        options: { data: metadata },
+      }),
+    })
 
-  if (error) {
-    return {
-      error: {
-        message: getAuthErrorMessage(error.message),
-        code: error.code,
-      },
+    const data = await res.json()
+
+    if (!res.ok) {
+      return { error: { message: getAuthErrorMessage(data.error), code: res.status.toString() } }
     }
-  }
 
-  return {}
+    if (data.session) {
+      const { createClient } = await import("@/lib/supabase/client")
+      const client = createClient()
+      await client.auth.setSession({
+        access_token: data.session.access_token,
+        refresh_token: data.session.refresh_token,
+      })
+    }
+
+    return {}
+  } catch {
+    return { error: { message: "Erreur réseau. Vérifiez votre connexion" } }
+  }
 }
 
 export async function signUpWithOnboarding(input: OnboardingInput): Promise<{
   error?: AuthError
   session: any | null
 }> {
-  const { error, data } = await supabase.auth.signUp({
-    email: input.email,
-    password: input.password,
-    options: {
-      data: {
-        first_name: input.first_name,
-        last_name: input.last_name,
-        city: input.city,
-        gender: input.gender,
-        phone: input.phone || null,
-      },
-    },
-  })
+  try {
+    const res = await fetch("/api/auth/signup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: input.email,
+        password: input.password,
+        options: {
+          data: {
+            first_name: input.first_name,
+            last_name: input.last_name,
+            city: input.city,
+            gender: input.gender,
+            phone: input.phone || null,
+          },
+        },
+      }),
+    })
 
-  if (error) {
-    return {
-      error: {
-        message: getAuthErrorMessage(error.message),
-        code: error.code,
-      },
-      session: null,
+    const data = await res.json()
+
+    if (!res.ok) {
+      return {
+        error: { message: getAuthErrorMessage(data.error), code: res.status.toString() },
+        session: null,
+      }
     }
-  }
 
-  return { session: data.session, error: undefined }
+    if (data.session) {
+      const { createClient } = await import("@/lib/supabase/client")
+      const client = createClient()
+      await client.auth.setSession({
+        access_token: data.session.access_token,
+        refresh_token: data.session.refresh_token,
+      })
+    }
+
+    return { session: data.session, error: undefined }
+  } catch {
+    return { error: { message: "Erreur réseau. Vérifiez votre connexion" }, session: null }
+  }
 }
 
 export async function signInWithPhone(input: PhoneInput): Promise<{ error?: AuthError }> {
@@ -99,7 +133,12 @@ export async function signInWithPhone(input: PhoneInput): Promise<{ error?: Auth
 }
 
 export async function signInWithEmailOtp(email: string): Promise<{ error?: AuthError }> {
-  const { error } = await supabase.auth.signInWithOtp({ email })
+  const { error } = await supabase.auth.signInWithOtp({
+    email,
+    options: {
+      emailRedirectTo: getAuthCallbackUrl("/dashboard"),
+    },
+  })
 
   if (error) {
     return {
@@ -113,25 +152,10 @@ export async function signInWithEmailOtp(email: string): Promise<{ error?: AuthE
   return {}
 }
 
-function getSiteUrl(): string {
-  let url =
-    process.env.NEXT_PUBLIC_SITE_URL ||
-    process.env.NEXT_PUBLIC_VERCEL_URL ||
-    (typeof window !== "undefined" ? window.location.origin : "http://localhost:3000")
-
-  // Ensure url has https:// if it's a vercel domain and missing protocol
-  url = url.startsWith("http") ? url : `https://${url}`
-  
-  // Remove trailing slash if present
-  url = url.replace(/\/$/, "")
-  
-  return url
-}
-
 export async function signInWithGoogle(): Promise<{ error?: AuthError }> {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
-    options: { redirectTo: `${getSiteUrl()}/auth/callback` },
+    options: { redirectTo: getAuthCallbackUrl("/dashboard") },
   })
 
   if (error) {
@@ -147,7 +171,7 @@ export async function signInWithGoogle(): Promise<{ error?: AuthError }> {
 export async function signInWithFacebook(): Promise<{ error?: AuthError }> {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "facebook",
-    options: { redirectTo: `${getSiteUrl()}/auth/callback` },
+    options: { redirectTo: getAuthCallbackUrl("/dashboard") },
   })
 
   if (error) {
@@ -166,10 +190,11 @@ export async function signOut(): Promise<void> {
 
 export async function sendPasswordResetEmail(email: string): Promise<{ error?: AuthError }> {
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${window.location.origin}/reset-password`,
+    redirectTo: getAuthCallbackUrl("/reset-password"),
   })
 
   if (error) {
+    console.error("[Auth] Password reset error:", error)
     return {
       error: {
         message: getAuthErrorMessage(error.message),
@@ -199,6 +224,9 @@ export async function verifyOtp(email: string, token: string): Promise<{ error?:
     email,
     token,
     type: "email",
+    options: {
+      redirectTo: `${getAppUrl()}/dashboard`,
+    },
   })
 
   if (error) {
@@ -228,10 +256,17 @@ function getAuthErrorMessage(message: string): string {
     "Email not confirmed": "Veuillez confirmer votre adresse email",
     "User already registered": "Un compte existe déjà avec cette adresse email",
     "Invalid email": "Adresse email invalide",
-    "Password should be at least 6 characters": "Le mot de passe doit contenir au moins 6 caractères",
+    "Password should be at least 6 characters": "Le mot de passe doit contenir au moins 8 caractères",
     "Rate limit exceeded": "Trop de tentatives. Veuillez réessayer dans quelques minutes",
+    "Error sending confirmation email": "Erreur d'envoi de l'email de confirmation. Vérifiez que l'adresse email est correcte ou réessayez plus tard.",
+    "Error sending verification email": "Erreur d'envoi de l'email de vérification. Veuillez réessayer.",
+    "Error sending reset email": "Erreur d'envoi de l'email de réinitialisation. Veuillez réessayer.",
     "NetworkError": "Erreur réseau. Vérifiez votre connexion",
     "Failed to fetch": "Impossible de contacter le serveur",
+    "Invalid email or OTP": "Email ou code invalide",
+    "OTP has expired": "Le code a expiré. Veuillez en demander un nouveau.",
+    "Email rate limit exceeded": "Trop d'emails envoyés. Veuillez réessayer dans quelques minutes.",
+    "Signup requires a valid password": "Un mot de passe valide est requis",
   }
 
   return errorMap[message] || message || "Une erreur est survenue"

@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { logActivity } from "@/lib/activity";
 
 const chatSchema = z.object({
   message: z.string().min(1).max(4000),
@@ -15,8 +17,10 @@ interface AnthropicResponse {
 }
 
 export async function POST(request: Request) {
-  const body = chatSchema.safeParse(await request.json());
+  const supabase = createServerSupabaseClient();
+  const { data: { user } } = await supabase.auth.getUser();
 
+  const body = chatSchema.safeParse(await request.json());
   if (!body.success) {
     return NextResponse.json({ message: "Message invalide." }, { status: 400 });
   }
@@ -45,5 +49,16 @@ export async function POST(request: Request) {
   }
 
   const data = (await response.json()) as AnthropicResponse;
+
+  if (user) {
+    logActivity({
+      userId: user.id,
+      type: "ai_action",
+      title: "Assistant IA WayaCloud",
+      description: `Question : ${body.data.message.slice(0, 80)}${body.data.message.length > 80 ? "..." : ""}`,
+      metadata: { tool: "chat", message_length: body.data.message.length },
+    });
+  }
+
   return NextResponse.json({ answer: data.content[0]?.text ?? "" });
 }

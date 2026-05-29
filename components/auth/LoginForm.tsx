@@ -47,7 +47,7 @@ export function LoginForm({ tab, mode = "login", onOtpSent }: LoginFormProps) {
       }
       storage.remove("wayacloud_referral_code")
       setLoading(false)
-      router.push(`/verify-email?email=${encodeURIComponent(data.email)}`)
+      router.push("/dashboard")
       return
     }
 

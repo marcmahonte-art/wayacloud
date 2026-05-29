@@ -218,7 +218,7 @@ export default function AbonnementPage() {
                     <span className="mr-2 text-primary"><Crown size={20} /></span>
                   )}
                   <h2 className="text-xl font-medium text-slate-800">{plan.name}</h2>
-                  <span className="ml-2 text-xs text-slate-400">({plan.storage_go} Go)</span>
+                  <span className="ml-2 text-xs text-slate-400">({plan.storage_go || 5} Go)</span>
                 </div>
 
                 <div className="mt-4 flex items-baseline justify-center text-slate-900 whitespace-nowrap w-full">

@@ -12,6 +12,21 @@ export function formatStorageGo(value: number): string {
   return `${value.toLocaleString("fr-FR")} Go`;
 }
 
+export function formatBytes(bytes: number): string {
+  if (!bytes || bytes === 0) return "0 o";
+  const k = 1024;
+  const sizes = ["o", "Ko", "Mo", "Go"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
+}
+
+export function formatDuration(seconds: number): string {
+  if (seconds < 60) return `${seconds}s`;
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${mins}m ${secs}s`;
+}
+
 export function formatRelativeDate(date: Date): string {
   const now = new Date();
   const diffMs = date.getTime() - now.getTime();

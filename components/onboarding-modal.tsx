@@ -67,7 +67,7 @@ export function OnboardingModal({ open, onOpenChange }: OnboardingModalProps) {
   const handleSubmit = async (data: OnboardingFormData) => {
     setLoading(true)
 
-    const { error } = await signUpWithOnboarding({
+    const { error, session } = await signUpWithOnboarding({
       email: data.email,
       password: data.password,
       first_name: data.first_name,
@@ -80,24 +80,6 @@ export function OnboardingModal({ open, onOpenChange }: OnboardingModalProps) {
     if (error) {
       form.setError("email", { message: error.message })
       form.setError("password", { message: error.message })
-      setLoading(false)
-      return
-    }
-
-    const { error: signInError } = await signInWithEmail({
-      email: data.email,
-      password: data.password,
-    })
-
-    if (signInError) {
-      if (signInError.message === "Veuillez confirmer votre adresse email") {
-        setLoading(false)
-        onOpenChange(false)
-        router.push(`/verify-email?email=${encodeURIComponent(data.email)}`)
-        return
-      }
-      form.setError("email", { message: signInError.message })
-      form.setError("password", { message: signInError.message })
       setLoading(false)
       return
     }

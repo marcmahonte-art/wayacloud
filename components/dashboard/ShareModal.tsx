@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { SocialIcon } from "@/components/ui/SocialIcon";
 import {
-  X, Link, Copy, Check, Users, Globe, Clock,
-  Mail, Loader2, Lock, Shield,
+  X, Link, Copy, Check, Users, Clock, Mail,
+  Loader2, Lock, Shield,
 } from "lucide-react";
 import { FileItem } from "./FileContextMenu";
 
@@ -154,6 +155,27 @@ export function ShareModal({ isOpen, onClose, file }: ShareModalProps) {
                   className="flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-lg bg-primary text-white hover:bg-primary-light transition-colors"
                 >
                   {copied ? <Check size={18} /> : <Copy size={18} />}
+                </button>
+                <button
+                  onClick={() => window.location.href = `mailto:?subject=Partage%20de%20lien&body=${encodeURIComponent(shareLink)}`}
+                  className="flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-lg bg-red-600 text-white hover:bg-red-500 transition-colors"
+                  title="Partager par Gmail"
+                >
+                  <SocialIcon network="gmail" size={20} />
+                </button>
+                <button
+                  onClick={() => window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareLink)}`, "_blank")}
+                  className="flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white hover:bg-blue-500 transition-colors"
+                  title="Partager sur Facebook"
+                >
+                  <SocialIcon network="facebook" size={20} />
+                </button>
+                <button
+                  onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(shareLink)}`, "_blank")}
+                  className="flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-lg bg-[#25D366] text-white hover:bg-[#20BD5A] transition-colors"
+                  title="Partager sur WhatsApp"
+                >
+                  <SocialIcon network="whatsapp" size={20} />
                 </button>
               </div>
               {copied && (

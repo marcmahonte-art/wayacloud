@@ -1,19 +1,30 @@
 import { NextResponse } from "next/server";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { updateStorageUsed } from "@/lib/files";
 import { z } from "zod";
 
-export async function GET() {
-  const supabase = createAdminSupabaseClient();
+export async function GET(request: Request) {
+  const supabase = createServerSupabaseClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ message: "Non authentifié." }, { status: 401 });
 
-  const { data, error } = await supabase
+  const { searchParams } = new URL(request.url);
+  const showTrashed = searchParams.get("trashed") === "true";
+
+  const admin = createAdminSupabaseClient();
+  let query = admin
     .from("files")
     .select("id, name, mime_type, size_bytes, checksum_sha256, status, is_trashed, trashed_at, is_favorite, color_label, parent_id, object_key, created_at, updated_at")
-    .eq("owner_id", user.id)
-    .eq("is_trashed", false)
-    .order("created_at", { ascending: false });
+    .eq("owner_id", user.id);
+
+  if (showTrashed) {
+    query = query.eq("is_trashed", true).neq("status", "deleted");
+  } else {
+    query = query.eq("is_trashed", false);
+  }
+
+  const { data, error } = await query.order("created_at", { ascending: false });
 
   if (error) return NextResponse.json({ message: error.message }, { status: 500 });
   return NextResponse.json(data);
@@ -24,14 +35,15 @@ const copySchema = z.object({
 });
 
 export async function POST(request: Request) {
-  const supabase = createAdminSupabaseClient();
+  const supabase = createServerSupabaseClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ message: "Non authentifié." }, { status: 401 });
 
   const body = copySchema.safeParse(await request.json());
   if (!body.success) return NextResponse.json({ message: "Données invalides." }, { status: 400 });
 
-  const { data: source } = await supabase
+  const admin = createAdminSupabaseClient();
+  const { data: source } = await admin
     .from("files")
     .select("*")
     .eq("id", body.data.fileId)
@@ -40,7 +52,7 @@ export async function POST(request: Request) {
 
   if (!source) return NextResponse.json({ message: "Fichier introuvable." }, { status: 404 });
 
-  const { data: newFile, error } = await supabase
+  const { data: newFile, error } = await admin
     .from("files")
     .insert({
       owner_id: user.id,
