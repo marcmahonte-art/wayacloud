@@ -135,7 +135,7 @@ export default function FilesExplorerPage() {
         type: f.mime_type?.startsWith("image") ? "image" : f.mime_type?.startsWith("video") ? "video" : f.mime_type?.startsWith("audio") ? "audio" : "document",
         folder: cat.folder,
         size: sizeStr,
-        url: "",
+        url: f.url ?? "",
         id: f.id,
       };
     });

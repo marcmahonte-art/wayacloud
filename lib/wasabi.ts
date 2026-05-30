@@ -10,7 +10,7 @@ let cachedClient: S3Client | null = null;
 export function getWasabiClient(): S3Client {
   if (cachedClient) return cachedClient;
   cachedClient = new S3Client({
-    region: process.env.WASABI_REGION ?? "eu-central-1",
+    region: process.env.WASABI_REGION ?? "eu-west-2",
     endpoint: process.env.WASABI_ENDPOINT,
     credentials: {
       accessKeyId: process.env.WASABI_ACCESS_KEY ?? "",

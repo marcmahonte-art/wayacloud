@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { updateStorageUsed } from "@/lib/files";
+import { generatePresignedGet } from "@/lib/wasabi";
 import { z } from "zod";
 
 export async function GET(request: Request) {
@@ -27,7 +28,15 @@ export async function GET(request: Request) {
   const { data, error } = await query.order("created_at", { ascending: false });
 
   if (error) return NextResponse.json({ message: error.message }, { status: 500 });
-  return NextResponse.json(data);
+
+  const files = await Promise.all(
+    (data ?? []).map(async (file: any) => ({
+      ...file,
+      url: file.object_key ? await generatePresignedGet(file.object_key).catch(() => "") : "",
+    })),
+  );
+
+  return NextResponse.json(files);
 }
 
 const copySchema = z.object({

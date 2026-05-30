@@ -9,6 +9,7 @@ export interface FileEntry {
   mime_type: string;
   size_bytes: number;
   object_key: string;
+  url?: string;
   status: string;
   is_trashed: boolean;
   trashed_at: string | null;
