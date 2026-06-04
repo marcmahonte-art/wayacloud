@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback } from "react";
-import { FileImage, FileText, Play, FileAudio, Folder, MoreVertical } from "lucide-react";
+import { useCallback, useState, useRef, useEffect } from "react";
+import { FileImage, FileText, Play, FileAudio, Folder, MoreVertical, Download, Edit3, Trash2, Star, Share2, Info } from "lucide-react";
 import { useStorageStore } from "@/lib/store/storage-store";
 
 function formatBytes(bytes: number): string {
@@ -66,25 +66,48 @@ function getFileLabel(category: string): string {
   }
 }
 
+const MENU_ITEMS = [
+  { id: "download", label: "Télécharger", icon: Download },
+  { id: "rename", label: "Renommer", icon: Edit3 },
+  { id: "favorite", label: "Favori", icon: Star },
+  { id: "share", label: "Partager", icon: Share2 },
+  { id: "trash", label: "Corbeille", icon: Trash2 },
+  { id: "info", label: "Informations", icon: Info },
+];
+
 export function RecentFilesList() {
   const files = useStorageStore((s) => s.files);
+  const refreshAll = useStorageStore((s) => s.refreshAll);
+  const [openMenu, setOpenMenu] = useState<string | null>(null);
 
   const sorted = [...files]
     .filter((f) => !f.is_trashed)
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
     .slice(0, 5);
 
-  const handleAction = useCallback((actionId: string, file: any) => {
-    if (actionId === "trash" && file.id) {
-      fetch(`/api/files/${file.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ is_trashed: true }) });
-    }
-    if ((actionId === "delete") && file.id) {
-      fetch(`/api/files/${file.id}`, { method: "DELETE" });
-    }
-    if (actionId === "rename" && file.id) {
-      fetch(`/api/files/${file.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: file.name }) });
-    }
+  useEffect(() => {
+    const close = () => setOpenMenu(null);
+    window.addEventListener("click", close);
+    return () => window.removeEventListener("click", close);
   }, []);
+
+  const handleAction = useCallback(async (actionId: string, file: any) => {
+    setOpenMenu(null);
+    if (actionId === "download" && file.url) {
+      window.open(file.url, "_blank");
+      return;
+    }
+    if (actionId === "trash" && file.id) {
+      await fetch(`/api/files/${file.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ is_trashed: true }) });
+      refreshAll();
+      return;
+    }
+    if (actionId === "favorite" && file.id) {
+      await fetch(`/api/files/${file.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ is_favorite: true }) });
+      refreshAll();
+      return;
+    }
+  }, [refreshAll]);
 
   return (
     <article className="min-w-0 rounded-card border border-[#ECE7DF] bg-white p-5 shadow-card">
@@ -109,6 +132,7 @@ export function RecentFilesList() {
           sorted.map((f) => {
             const cat = getFileCategory(f.mime_type, f.name);
             const Icon = getFileIcon(cat);
+            const isOpen = openMenu === f.id;
             return (
               <div key={f.id} className="group grid min-w-0 grid-cols-[42px_minmax(0,1fr)_auto] gap-3 py-3 hover:bg-slate-50 rounded-lg px-2 -mx-2 transition-colors">
                 <span className={`flex h-10 w-10 items-center justify-center rounded-btn ${getFileColor(cat)}`}>
@@ -118,14 +142,31 @@ export function RecentFilesList() {
                   <p className="truncate text-sm font-bold text-dark">{f.name}</p>
                   <p className="mt-1 text-xs text-[#69708A]">{formatBytes(f.size_bytes)} • {getFileLabel(cat)}</p>
                 </div>
-                <div className="flex items-center gap-2 sm:flex-col sm:items-end sm:gap-0.5">
+                <div className="relative flex items-center gap-2 sm:flex-col sm:items-end sm:gap-0.5">
                   <button
-                    onClick={() => handleAction("trash", f)}
-                    className="p-1 opacity-0 group-hover:opacity-100 hover:bg-red-100 rounded-md transition-all"
-                    title="Corbeille"
+                    onClick={(e) => { e.stopPropagation(); setOpenMenu(isOpen ? null : f.id); }}
+                    className="p-1 opacity-0 group-hover:opacity-100 hover:bg-[#E3DFE8] rounded-md transition-all"
+                    title="Actions"
                   >
                     <MoreVertical size={16} className="text-[#69708A]" />
                   </button>
+                  {isOpen && (
+                    <div className="absolute right-0 top-full z-50 mt-1 w-44 rounded-card border border-[#ECE7DF] bg-white py-1 shadow-lg" onClick={(e) => e.stopPropagation()}>
+                      {MENU_ITEMS.map((item) => {
+                        const ItemIcon = item.icon;
+                        return (
+                          <button
+                            key={item.id}
+                            onClick={() => handleAction(item.id, f)}
+                            className="flex w-full items-center gap-2 px-4 py-2 text-left text-[13px] text-[#516080] hover:bg-[#F5F3F0] transition-colors"
+                          >
+                            <ItemIcon size={15} className="text-[#69708A]" />
+                            {item.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                   <p className="whitespace-nowrap text-xs text-[#596077]">{formatDate(f.created_at)}</p>
                 </div>
               </div>

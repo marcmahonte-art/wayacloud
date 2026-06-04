@@ -36,7 +36,7 @@ function formatTime(dateStr: string): string {
 export function ActivityFeed() {
   const activities = useStorageStore((s) => s.activities);
 
-  const display = (activities || []).slice(0, 10);
+  const display = (activities || []).slice(0, 4);
 
   return (
     <div className="space-y-4">
