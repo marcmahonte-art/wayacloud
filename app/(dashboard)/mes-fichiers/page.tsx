@@ -23,7 +23,7 @@ import {
   Square,
   Trash2,
 } from "lucide-react";
-import { FileViewerModal } from "@/components/ui/FileViewerModal";
+import { FileViewerModal, type ViewerFile } from "@/components/ui/FileViewerModal";
 import { FileDetailsPanel } from "@/components/ui/FileDetailsPanel";
 import { FileContextMenu } from "@/components/dashboard/FileContextMenu";
 import { ShareModal } from "@/components/dashboard/ShareModal";
@@ -43,12 +43,6 @@ interface DisplayFile {
   size: string;
   url: string;
   id?: string;
-}
-
-interface ViewerFile {
-  name: string;
-  url: string;
-  type: "image" | "video" | "audio" | "pdf" | "other";
 }
 
 const CATEGORY_CONFIG: Record<string, { label: string; bg: string; border: string; color: string; icon: string; types: string[] }> = {
@@ -88,9 +82,13 @@ function categorizeMime(mimeType: string | null, fileName: string): { folder: st
 
 const ICON_MAP: Record<string, typeof FileImage> = { FileImage, Play, FileAudio, FileText, Folder };
 
-function toViewerFile(file: DisplayFile | null): ViewerFile | null {
-  if (!file) return null;
-  return { name: file.name, url: file.url, type: (["image", "video", "audio", "pdf"] as const).includes(file.type as any) ? file.type as "image" | "video" | "audio" | "pdf" : "other" };
+function toViewerFile(file: DisplayFile): ViewerFile {
+  const type = (["image", "video", "audio", "pdf"] as const).includes(file.type as any) ? file.type as ViewerFile["type"] : "other";
+  return { id: file.id || file.name, name: file.name, url: file.url, type };
+}
+
+function toViewerFiles(files: DisplayFile[]): ViewerFile[] {
+  return files.map(toViewerFile);
 }
 
 function formatFileSize(bytes: number): string {
@@ -114,7 +112,7 @@ export default function FilesExplorerPage() {
   const [fullscreenFile, setFullscreenFile] = useState<DisplayFile | null>(null);
   const [contextMenu, setContextMenu] = useState<{ file: any; position: { x: number; y: number }; open: boolean }>({ file: null, position: { x: 0, y: 0 }, open: false });
   const [shareModalFile, setShareModalFile] = useState<DisplayFile | null>(null);
-  const [detailsFile, setDetailsFile] = useState<DisplayFile | null>(null);
+  const [detailsFile, setDetailsFile] = useState<any>(null);
   const [showSearch, setShowSearch] = useState(false);
   const [showDropZone, setShowDropZone] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -230,8 +228,9 @@ export default function FilesExplorerPage() {
   };
 
   const handleContextMenuAction = useCallback((actionId: string, file: any) => {
+    const rawFile = file.id ? useStorageStore.getState().files.find((f) => f.id === file.id) : null;
     if (actionId === "share") { setShareModalFile(file); setContextMenu((prev) => ({ ...prev, open: false })); return; }
-    if (actionId === "info") { setDetailsFile(file); setContextMenu((prev) => ({ ...prev, open: false })); return; }
+    if (actionId === "info") { setDetailsFile(rawFile || file); setContextMenu((prev) => ({ ...prev, open: false })); return; }
     if (actionId === "download") { handleDownload(file); setContextMenu((prev) => ({ ...prev, open: false })); return; }
     if (actionId === "open") { setFullscreenFile(file); setContextMenu((prev) => ({ ...prev, open: false })); return; }
     if (actionId === "rename") { setRenameModal({ file, open: true }); setContextMenu((prev) => ({ ...prev, open: false })); return; }
@@ -242,7 +241,10 @@ export default function FilesExplorerPage() {
       return;
     }
     if (actionId === "favorite") {
-      if (file.id) fetch(`/api/files/${file.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ is_favorite: true }) }).then(() => useStorageStore.getState().refreshAll());
+      if (file.id) {
+        const current = rawFile?.is_favorite ?? false;
+        fetch(`/api/files/${file.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ is_favorite: !current }) }).then(() => useStorageStore.getState().refreshAll());
+      }
       setContextMenu((prev) => ({ ...prev, open: false }));
       return;
     }
@@ -252,6 +254,15 @@ export default function FilesExplorerPage() {
       return;
     }
     if (actionId === "move") {
+      setContextMenu((prev) => ({ ...prev, open: false }));
+      return;
+    }
+    if (actionId === "label") {
+      if (file.id) {
+        const current = rawFile?.color_label ?? null;
+        const next = current ? null : "blue";
+        fetch(`/api/files/${file.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ color_label: next }) }).then(() => useStorageStore.getState().refreshAll());
+      }
       setContextMenu((prev) => ({ ...prev, open: false }));
       return;
     }
@@ -415,7 +426,7 @@ export default function FilesExplorerPage() {
                     const isSelected = selectedFile?.name === file.name;
                     const isChecked = selectedKeys.has(getFileKey(file));
                     return (
-                      <tr key={getFileKey(file)} onClick={() => setSelectedFile(file)} onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setSelectedFile(file); setContextMenu({ file, position: { x: e.clientX, y: e.clientY }, open: true }); }}
+                      <tr key={getFileKey(file)} onClick={() => { setFullscreenFile(file); setSelectedFile(file); }} onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setSelectedFile(file); setContextMenu({ file, position: { x: e.clientX, y: e.clientY }, open: true }); }}
                         className={`group hover:bg-[#FDFCFB] cursor-pointer transition ${isSelected ? "bg-primary/[0.04] hover:bg-primary/[0.06]" : isChecked ? "bg-primary/[0.02]" : ""}`}>
                         <td className="py-3 px-2 sm:px-3"><button onClick={(e) => { e.stopPropagation(); toggleSelect(file); }} className="flex items-center justify-center w-full">{isChecked ? <CheckSquare size={16} className="text-primary" /> : <Square size={16} className="text-[#D0D0D0] group-hover:text-[#9CA3AF] transition-colors" />}</button></td>
                         <td className="py-3 px-2 sm:px-5"><div className="flex items-center gap-3 min-w-0"><span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${file.color || "bg-blue-100 text-blue-600"}`}><IconComp size={16} /></span><span className="truncate text-[13px] font-semibold text-dark max-w-[120px] sm:max-w-[200px] md:max-w-[280px]">{file.name}</span></div></td>
@@ -484,7 +495,7 @@ export default function FilesExplorerPage() {
 
       <FileContextMenu file={contextMenu.file} isOpen={contextMenu.open} position={contextMenu.position} onClose={() => setContextMenu((prev) => ({ ...prev, open: false }))} onAction={handleContextMenuAction} />
       <ShareModal isOpen={!!shareModalFile} onClose={() => setShareModalFile(null)} file={shareModalFile} />
-      <FileViewerModal isOpen={!!fullscreenFile} onClose={() => setFullscreenFile(null)} file={toViewerFile(fullscreenFile)} />
+      <FileViewerModal isOpen={!!fullscreenFile} onClose={() => setFullscreenFile(null)} files={toViewerFiles(filteredFiles)} initialIndex={fullscreenFile ? filteredFiles.indexOf(fullscreenFile) : 0} />
       {detailsFile && <FileDetailsPanel file={detailsFile} onClose={() => setDetailsFile(null)} />}
 
       {renameModal.open && (

@@ -48,6 +48,17 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // Log signup activity (DB trigger also logs it, but this ensures immediate visibility)
+    try {
+      await supabase.rpc("insert_activity", {
+        p_user_id: data.user.id,
+        p_type: "signup",
+        p_title: "Inscription",
+        p_description: "Nouvel utilisateur inscrit",
+        p_metadata: JSON.stringify({ email }),
+      });
+    } catch { /* DB trigger will handle this */ }
+
     // Sign in the user so they get a session immediately
     const anonClient = createClient(supabaseUrl, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
     const { data: signInData, error: signInError } = await anonClient.auth.signInWithPassword({

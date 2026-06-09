@@ -24,6 +24,9 @@ export async function signInWithEmail(input: LoginInput): Promise<{ error?: Auth
     }
   }
 
+  // Track login activity (fire-and-forget)
+  fetch("/api/auth/log-session", { method: "POST" }).catch(() => {})
+
   return {}
 }
 

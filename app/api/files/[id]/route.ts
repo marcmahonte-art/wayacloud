@@ -33,23 +33,6 @@ export async function PATCH(
   if (body.data.is_trashed !== undefined) {
     updates.is_trashed = body.data.is_trashed;
     updates.trashed_at = body.data.is_trashed ? new Date().toISOString() : null;
-
-    const { data: file } = await admin
-      .from("files")
-      .select("name")
-      .eq("id", params.id)
-      .eq("owner_id", user.id)
-      .single();
-    if (file) {
-      logActivity({
-        userId: user.id,
-        type: body.data.is_trashed ? "trash" : "restore",
-        title: body.data.is_trashed
-          ? `Fichier déplacé vers la corbeille : ${file.name}`
-          : `Fichier restauré : ${file.name}`,
-        metadata: { file_id: params.id, file_name: file.name },
-      });
-    }
   }
 
   const { data, error } = await admin

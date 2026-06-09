@@ -1,8 +1,11 @@
 "use client";
 
-import { useCallback, useState, useRef, useEffect } from "react";
+import { useCallback, useState, useEffect } from "react";
 import { FileImage, FileText, Play, FileAudio, Folder, MoreVertical, Download, Edit3, Trash2, Star, Share2, Info } from "lucide-react";
 import { useStorageStore } from "@/lib/store/storage-store";
+import { FileViewerModal, type ViewerFile } from "@/components/ui/FileViewerModal";
+import { FileDetailsPanel } from "@/components/ui/FileDetailsPanel";
+import { ShareModal } from "@/components/dashboard/ShareModal";
 
 function formatBytes(bytes: number): string {
   if (!bytes || bytes === 0) return "0 o";
@@ -75,10 +78,23 @@ const MENU_ITEMS = [
   { id: "info", label: "Informations", icon: Info },
 ];
 
+function toViewerFile(f: any): ViewerFile {
+  const mime = (f.mime_type || "").toLowerCase();
+  let type: ViewerFile["type"] = "other";
+  if (mime.startsWith("image/")) type = "image";
+  else if (mime.startsWith("video/")) type = "video";
+  else if (mime.startsWith("audio/")) type = "audio";
+  else if (mime === "application/pdf") type = "pdf";
+  return { id: f.id, name: f.name, url: f.url || "", type };
+}
+
 export function RecentFilesList() {
   const files = useStorageStore((s) => s.files);
   const refreshAll = useStorageStore((s) => s.refreshAll);
   const [openMenu, setOpenMenu] = useState<string | null>(null);
+  const [viewerIndex, setViewerIndex] = useState<number | null>(null);
+  const [shareFile, setShareFile] = useState<any>(null);
+  const [detailsFile, setDetailsFile] = useState<any>(null);
 
   const sorted = [...files]
     .filter((f) => !f.is_trashed)
@@ -103,77 +119,108 @@ export function RecentFilesList() {
       return;
     }
     if (actionId === "favorite" && file.id) {
-      await fetch(`/api/files/${file.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ is_favorite: true }) });
+      const raw = useStorageStore.getState().files.find((f) => f.id === file.id);
+      const current = raw?.is_favorite ?? false;
+      await fetch(`/api/files/${file.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ is_favorite: !current }) });
       refreshAll();
+      return;
+    }
+    if (actionId === "rename" && file.id) {
+      const newName = prompt("Nouveau nom :", file.name);
+      if (newName && newName.trim() && newName !== file.name) {
+        await fetch(`/api/files/${file.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: newName.trim() }) });
+        refreshAll();
+      }
+      return;
+    }
+    if (actionId === "share") {
+      setShareFile(file);
+      return;
+    }
+    if (actionId === "info") {
+      const raw = useStorageStore.getState().files.find((f) => f.id === file.id);
+      setDetailsFile(raw || file);
       return;
     }
   }, [refreshAll]);
 
+  const viewerFiles: ViewerFile[] = sorted.map(toViewerFile);
+
   return (
-    <article className="min-w-0 rounded-card border border-[#ECE7DF] bg-white p-5 shadow-card">
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-bold">Fichiers récents</h2>
-        {files.length > 5 && (
-          <a href="/mes-fichiers" className="text-xs font-medium text-[#69708A] hover:text-primary transition-colors">
-            Voir tout ({files.length})
-          </a>
-        )}
-      </div>
-      <div className="mt-4 divide-y divide-[#EFEAE2]">
-        {sorted.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-8 text-center">
-            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#F5F3F0]">
-              <Folder size={24} className="text-[#C8C0B5]" />
-            </div>
-            <p className="mt-4 text-[13px] font-semibold text-slate-500">Aucun fichier récent</p>
-            <p className="text-xs text-slate-400 mt-1">Importe ton premier fichier</p>
-          </div>
-        ) : (
-          sorted.map((f) => {
-            const cat = getFileCategory(f.mime_type, f.name);
-            const Icon = getFileIcon(cat);
-            const isOpen = openMenu === f.id;
-            return (
-              <div key={f.id} className="group grid min-w-0 grid-cols-[42px_minmax(0,1fr)_auto] gap-3 py-3 hover:bg-slate-50 rounded-lg px-2 -mx-2 transition-colors">
-                <span className={`flex h-10 w-10 items-center justify-center rounded-btn ${getFileColor(cat)}`}>
-                  <Icon size={20} />
-                </span>
-                <div className="min-w-0 flex flex-col justify-center">
-                  <p className="truncate text-sm font-bold text-dark">{f.name}</p>
-                  <p className="mt-1 text-xs text-[#69708A]">{formatBytes(f.size_bytes)} • {getFileLabel(cat)}</p>
-                </div>
-                <div className="relative flex items-center gap-2 sm:flex-col sm:items-end sm:gap-0.5">
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setOpenMenu(isOpen ? null : f.id); }}
-                    className="p-1 opacity-0 group-hover:opacity-100 hover:bg-[#E3DFE8] rounded-md transition-all"
-                    title="Actions"
-                  >
-                    <MoreVertical size={16} className="text-[#69708A]" />
-                  </button>
-                  {isOpen && (
-                    <div className="absolute right-0 top-full z-50 mt-1 w-44 rounded-card border border-[#ECE7DF] bg-white py-1 shadow-lg" onClick={(e) => e.stopPropagation()}>
-                      {MENU_ITEMS.map((item) => {
-                        const ItemIcon = item.icon;
-                        return (
-                          <button
-                            key={item.id}
-                            onClick={() => handleAction(item.id, f)}
-                            className="flex w-full items-center gap-2 px-4 py-2 text-left text-[13px] text-[#516080] hover:bg-[#F5F3F0] transition-colors"
-                          >
-                            <ItemIcon size={15} className="text-[#69708A]" />
-                            {item.label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                  <p className="whitespace-nowrap text-xs text-[#596077]">{formatDate(f.created_at)}</p>
-                </div>
+    <>
+      <article className="min-w-0 rounded-card border border-[#ECE7DF] bg-white p-5 shadow-card">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-bold">Fichiers récents</h2>
+          {files.length > 5 && (
+            <a href="/mes-fichiers" className="text-xs font-medium text-[#69708A] hover:text-primary transition-colors">
+              Voir tout ({files.length})
+            </a>
+          )}
+        </div>
+        <div className="mt-4 divide-y divide-[#EFEAE2]">
+          {sorted.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-8 text-center">
+              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#F5F3F0]">
+                <Folder size={24} className="text-[#C8C0B5]" />
               </div>
-            );
-          })
-        )}
-      </div>
-    </article>
+              <p className="mt-4 text-[13px] font-semibold text-slate-500">Aucun fichier récent</p>
+              <p className="text-xs text-slate-400 mt-1">Importe ton premier fichier</p>
+            </div>
+          ) : (
+            sorted.map((f) => {
+              const cat = getFileCategory(f.mime_type, f.name);
+              const Icon = getFileIcon(cat);
+              const isOpen = openMenu === f.id;
+              return (
+                <div key={f.id} className="group grid min-w-0 grid-cols-[42px_minmax(0,1fr)_auto] gap-3 py-3 hover:bg-slate-50 rounded-lg px-2 -mx-2 transition-colors cursor-pointer" onClick={() => setViewerIndex(sorted.indexOf(f))}>
+                  <span className={`flex h-10 w-10 items-center justify-center rounded-btn ${getFileColor(cat)}`}>
+                    <Icon size={20} />
+                  </span>
+                  <div className="min-w-0 flex flex-col justify-center">
+                    <p className="truncate text-sm font-bold text-dark">{f.name}</p>
+                    <p className="mt-1 text-xs text-[#69708A]">{formatBytes(f.size_bytes)} • {getFileLabel(cat)}</p>
+                  </div>
+                  <div className="relative flex items-center gap-2 sm:flex-col sm:items-end sm:gap-0.5">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setOpenMenu(isOpen ? null : f.id); }}
+                      className="p-1 opacity-0 group-hover:opacity-100 hover:bg-[#E3DFE8] rounded-md transition-all"
+                      title="Actions"
+                    >
+                      <MoreVertical size={16} className="text-[#69708A]" />
+                    </button>
+                    {isOpen && (
+                      <div className="absolute right-0 top-full z-50 mt-1 w-44 rounded-card border border-[#ECE7DF] bg-white py-1 shadow-lg" onClick={(e) => e.stopPropagation()}>
+                        {MENU_ITEMS.map((item) => {
+                          const ItemIcon = item.icon;
+                          return (
+                            <button
+                              key={item.id}
+                              onClick={() => handleAction(item.id, f)}
+                              className="flex w-full items-center gap-2 px-4 py-2 text-left text-[13px] text-[#516080] hover:bg-[#F5F3F0] transition-colors"
+                            >
+                              <ItemIcon size={15} className="text-[#69708A]" />
+                              {item.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                    <p className="whitespace-nowrap text-xs text-[#596077]">{formatDate(f.created_at)}</p>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </article>
+      <FileViewerModal
+        isOpen={viewerIndex !== null}
+        onClose={() => setViewerIndex(null)}
+        files={viewerFiles}
+        initialIndex={viewerIndex ?? 0}
+      />
+      <ShareModal isOpen={!!shareFile} onClose={() => setShareFile(null)} file={shareFile} />
+      {detailsFile && <FileDetailsPanel file={detailsFile} onClose={() => setDetailsFile(null)} />}
+    </>
   );
 }

@@ -4,7 +4,6 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { isRateLimited } from "@/lib/rateLimit";
 import { headObject, generatePresignedGet } from "@/lib/wasabi";
-import { logActivity } from "@/lib/activity";
 
 const confirmSchema = z.object({
   key: z.string().min(1),
@@ -90,14 +89,6 @@ export async function POST(request: Request) {
         .update({ storage_used_bytes: quota.storage_used_bytes + body.data.size })
         .eq("user_id", user.id);
     }
-
-    logActivity({
-      userId: user.id,
-      type: "upload",
-      title: `Fichier importé : ${body.data.name}`,
-      description: `${(body.data.size / (1024 * 1024)).toFixed(1)} Mo`,
-      metadata: { file_id: newFile.id, file_name: body.data.name, size: body.data.size },
-    });
 
     let publicUrl = "";
     try {

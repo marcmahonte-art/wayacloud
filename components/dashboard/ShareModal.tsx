@@ -28,23 +28,30 @@ export function ShareModal({ isOpen, onClose, file }: ShareModalProps) {
     if (!file) return;
     setIsGenerating(true);
     try {
+      const maxDownloadsMap: Record<string, number> = {
+        "1h": 1, "24h": 5, "7d": 10, "30d": 50, "never": 100,
+      };
       const res = await fetch("/api/share", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          fileName: file.name,
-          expiration,
-          permission,
+          fileId: file.id,
+          maxDownloads: maxDownloadsMap[expiration] ?? 10,
         }),
       });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        setShareLink(`Erreur: ${err.message || res.statusText}`);
+        return;
+      }
       const data = await res.json();
-      setShareLink(data.url || `https://wayacloud.silk.vercel.app/s/${data.token || ""}`);
+      setShareLink(data.shareUrl || "");
     } catch {
-      setShareLink(`https://wayacloud.silk.vercel.app/s/error`);
+      setShareLink("Erreur de connexion");
     } finally {
       setIsGenerating(false);
     }
-  }, [file, expiration, permission]);
+  }, [file, expiration]);
 
   useEffect(() => {
     if (isOpen && file) {

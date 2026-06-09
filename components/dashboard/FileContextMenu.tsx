@@ -160,15 +160,6 @@ export function FileContextMenu({
   const IconComp = getIcon();
 
   const handleAction = (actionId: string) => {
-    if (actionId === "label") {
-      setShowLabels(!showLabels);
-      return;
-    }
-    if (actionId === "favorite") {
-      setIsFavorite(!isFavorite);
-      onAction(actionId, file);
-      return;
-    }
     onAction(actionId, file);
     onClose();
   };
