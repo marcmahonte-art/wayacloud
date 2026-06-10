@@ -78,17 +78,13 @@ export async function POST(request: Request) {
       );
     }
 
+    // La mise à jour du stockage (storage_quotas) est gérée de manière transactionnelle par le trigger PostgreSQL public.on_file_uploaded_trigger.
+    // Nous lisons simplement la nouvelle valeur calculée par la base de données.
     const { data: quota } = await admin
       .from("storage_quotas")
       .select("storage_used_bytes")
       .eq("user_id", user.id)
       .maybeSingle();
-    if (quota) {
-      await admin
-        .from("storage_quotas")
-        .update({ storage_used_bytes: quota.storage_used_bytes + body.data.size })
-        .eq("user_id", user.id);
-    }
 
     let publicUrl = "";
     try {
@@ -101,7 +97,7 @@ export async function POST(request: Request) {
       message: "Upload confirmé avec succès.",
       fileId: newFile.id,
       url: publicUrl,
-      storageUsed: (quota?.storage_used_bytes ?? 0) + body.data.size,
+      storageUsed: quota?.storage_used_bytes ?? 0,
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Erreur lors de la confirmation.";

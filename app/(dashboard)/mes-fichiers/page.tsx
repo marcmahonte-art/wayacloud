@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect } from "react"
+import { useSearchParams } from "next/navigation"
 import { FileGrid } from "@/components/dashboard/FileGrid"
 import { FileList } from "@/components/dashboard/FileList"
 import { FilePreviewPanel } from "@/components/dashboard/FilePreviewPanel"
@@ -9,6 +10,7 @@ import { useSettingsStore } from "@/lib/store/settings-store"
 import { computeFileSha256 } from "@/lib/upload/fileHash"
 import { useStorageUsage } from "@/hooks/useStorageUsage"
 import { useFileActions } from "@/hooks/useFileActions"
+import { useInfiniteFiles } from "@/hooks/useInfiniteFiles"
 import StorageProgress from "@/components/dashboard/StorageProgress"
 import { ImageViewer } from "@/components/files/ImageViewer"
 import { RenameFileDialog } from "@/components/files/RenameFileDialog"
@@ -22,6 +24,16 @@ export default function FilesExplorerPage() {
   const { usedBytes, limitBytes } = useStorageUsage()
   const { trashFile, renameFile, toggleFavorite, duplicateFile, downloadFile } = useFileActions()
 
+  const searchParams = useSearchParams()
+  const q = searchParams ? searchParams.get("q") || "" : ""
+
+  const [category, setCategory] = useState("")
+  const [search, setSearch] = useState(q)
+
+  useEffect(() => {
+    setSearch(q)
+  }, [q])
+
   const [isUploading, setIsUploading] = useState(false)
   const [previewFile, setPreviewFile] = useState<FileCardData | null>(null)
 
@@ -33,17 +45,32 @@ export default function FilesExplorerPage() {
   const [shareFile, setShareFile] = useState<FileCardData | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
 
+  const {
+    files,
+    loading,
+    loadingMore,
+    error,
+    hasMore,
+    total,
+    observerRef,
+    refresh,
+  } = useInfiniteFiles({
+    category,
+    search,
+    refreshTrigger: refreshKey,
+  })
+
   const handlePreview = useCallback((file: FileCardData) => {
     const isImage = file.mime_type?.startsWith("image/")
     if (isImage) {
-      const imageFiles = storeFiles.filter((f) => f.mime_type?.startsWith("image/")) as unknown as FileCardData[]
-      const idx = imageFiles.findIndex((f) => f.id === file.id)
+      const imgFiles = files.filter((f) => f.mime_type?.startsWith("image/")) as unknown as FileCardData[]
+      const idx = imgFiles.findIndex((f) => f.id === file.id)
       setImageViewerIndex(idx >= 0 ? idx : 0)
       setImageViewerOpen(true)
     } else {
       setPreviewFile((prev) => (prev?.id === file.id ? null : file))
     }
-  }, [storeFiles])
+  }, [files])
 
   const handleKebabAction = useCallback((actionId: string, file: FileCardData) => {
     switch (actionId) {
@@ -127,21 +154,21 @@ export default function FilesExplorerPage() {
 
   const handleBatchDelete = useCallback((ids: string[]) => {
     ids.forEach((id) => {
-      const file = storeFiles.find((f) => f.id === id)
+      const file = files.find((f) => f.id === id)
       if (file) trashFile(file as unknown as FileCardData)
     })
-  }, [storeFiles, trashFile])
+  }, [files, trashFile])
 
   const handleBatchShare = useCallback((ids: string[]) => {
-    const first = storeFiles.find((f) => ids.includes(f.id))
+    const first = files.find((f) => ids.includes(f.id))
     if (first) setShareFile(first as unknown as FileCardData)
-  }, [storeFiles])
+  }, [files])
 
   const handleShare = useCallback((file: FileCardData) => {
     setShareFile(file)
   }, [])
 
-  const imageFiles = storeFiles.filter((f) => f.mime_type?.startsWith("image/")) as unknown as FileCardData[]
+  const imageFiles = files.filter((f) => f.mime_type?.startsWith("image/")) as unknown as FileCardData[]
 
   return (
     <div className="flex h-[calc(100vh-100px)] min-h-[450px] w-full gap-0 overflow-hidden rounded-2xl border border-[#ece7df] bg-[#fbfaf8] shadow-card lg:gap-6">
@@ -152,6 +179,18 @@ export default function FilesExplorerPage() {
 
         {gridView ? (
           <FileGrid
+            files={files}
+            loading={loading}
+            loadingMore={loadingMore}
+            error={error}
+            hasMore={hasMore}
+            total={total}
+            observerRef={observerRef}
+            refresh={refresh}
+            category={category}
+            setCategory={setCategory}
+            search={search}
+            setSearch={setSearch}
             onPreview={handlePreview}
             onUpload={handleUpload}
             onBatchDelete={handleBatchDelete}
@@ -162,6 +201,18 @@ export default function FilesExplorerPage() {
           />
         ) : (
           <FileList
+            files={files}
+            loading={loading}
+            loadingMore={loadingMore}
+            error={error}
+            hasMore={hasMore}
+            total={total}
+            observerRef={observerRef}
+            refresh={refresh}
+            category={category}
+            setCategory={setCategory}
+            search={search}
+            setSearch={setSearch}
             onPreview={handlePreview}
             onUpload={handleUpload}
             onBatchDelete={handleBatchDelete}
@@ -189,7 +240,9 @@ export default function FilesExplorerPage() {
         onClose={() => setRenameFileTarget(null)}
         onConfirm={async (newName) => {
           if (!renameFileTarget?.id) return false
-          return renameFile(renameFileTarget.id, newName)
+          const success = await renameFile(renameFileTarget.id, newName)
+          if (success) setRefreshKey(v => v + 1)
+          return success
         }}
       />
 

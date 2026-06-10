@@ -43,10 +43,9 @@ export async function GET(request: Request) {
 
   const userIds = (data ?? []).map(p => p.id)
 
-  const [subsRes, quotasRes, filesRes] = await Promise.all([
+  const [subsRes, quotasRes] = await Promise.all([
     supabase.from("subscriptions").select("user_id, plan_id, is_active, is_trial").in("user_id", userIds),
     supabase.from("storage_quotas").select("user_id, storage_used_bytes, storage_limit_bytes").in("user_id", userIds),
-    supabase.from("files").select("owner_id, id", { count: "exact", head: true }).in("owner_id", userIds).eq("is_trashed", false),
   ])
 
   const subsByUser = new Map((subsRes.data ?? []).map(s => [s.user_id, s]))

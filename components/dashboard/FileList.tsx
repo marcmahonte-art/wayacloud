@@ -44,6 +44,18 @@ function getMimeColor(mime: string, name: string): string {
 }
 
 interface FileListProps {
+  files: FileCardData[]
+  loading: boolean
+  loadingMore: boolean
+  error: string | null
+  hasMore: boolean
+  total: number
+  observerRef: (node: HTMLDivElement | null) => void
+  refresh: () => void
+  category: string
+  setCategory: (c: string) => void
+  search: string
+  setSearch: (s: string) => void
   onPreview: (file: FileCardData) => void
   onUpload: () => void
   onBatchDelete: (ids: string[]) => void
@@ -53,28 +65,33 @@ interface FileListProps {
   refreshTrigger?: number
 }
 
-export function FileList({ onPreview, onUpload, onBatchDelete, onBatchShare, onFolderClick, onKebabAction, refreshTrigger }: FileListProps) {
+export function FileList({
+  files,
+  loading,
+  loadingMore,
+  error,
+  hasMore,
+  total,
+  observerRef,
+  refresh,
+  category,
+  setCategory,
+  search,
+  setSearch,
+  onPreview,
+  onUpload,
+  onBatchDelete,
+  onBatchShare,
+  onFolderClick,
+  onKebabAction,
+  refreshTrigger
+}: FileListProps) {
   const gridView = useSettingsStore((s) => s.grid_view)
   const toggleGridView = useSettingsStore((s) => s.toggleGridView)
 
-  const searchParams = useSearchParams()
-  const q = searchParams ? searchParams.get("q") || "" : ""
-
-  const [category, setCategory] = useState("")
-  const [search, setSearch] = useState(q)
-
-  useEffect(() => {
-    setSearch(q)
-  }, [q])
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [showSearch, setShowSearch] = useState(false)
   const [showDropZone, setShowDropZone] = useState(false)
-
-  const { files, loading, loadingMore, error, hasMore, total, observerRef, refresh } = useInfiniteFiles({
-    category,
-    search,
-    refreshTrigger,
-  })
 
   const handleSelect = useCallback((id: string) => {
     setSelectedIds((prev) => {

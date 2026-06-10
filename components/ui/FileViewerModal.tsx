@@ -2,8 +2,6 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { X, FileText, Download, ChevronLeft, ChevronRight } from "lucide-react";
-import Image from "next/image";
-
 export interface ViewerFile {
   id: string;
   name: string;
@@ -49,7 +47,7 @@ export function FileViewerModal({ isOpen, onClose, files, initialIndex }: FileVi
     if (file.type === "image") {
       return (
         <div
-          className="relative w-full h-[60vh] select-none"
+          className="relative w-full h-[50vh] md:h-[60vh] flex items-center justify-center select-none"
           onTouchStart={(e) => { touchStartX.current = e.touches[0].clientX; }}
           onTouchEnd={(e) => {
             if (touchStartX.current === null) return;
@@ -59,12 +57,10 @@ export function FileViewerModal({ isOpen, onClose, files, initialIndex }: FileVi
             touchStartX.current = null;
           }}
         >
-          <Image
+          <img
             src={file.url}
             alt={file.name}
-            fill
-            className="object-contain pointer-events-none"
-            unoptimized
+            className="max-w-full max-h-full object-contain pointer-events-none"
           />
           {isImage && (
             <>

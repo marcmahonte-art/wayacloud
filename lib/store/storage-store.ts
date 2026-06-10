@@ -206,26 +206,3 @@ useStorageStore.subscribe(
   (state: StorageState) => state.files,
   () => { useStorageStore.getState().recalcQuota(); },
 );
-
-// Supabase realtime subscription pour updates de stockage
-const supabase = createClient();
-
-supabase
-  .channel("public:files")
-  .on(
-    "postgres_changes",
-    { event: "INSERT", schema: "public", table: "files" },
-    (payload) => {
-      // Un nouveau fichier a été ajouté, rafraîchir le quota
-      useStorageStore.getState().refreshQuota();
-    },
-  )
-  .on(
-    "postgres_changes",
-    { event: "DELETE", schema: "public", table: "files" },
-    (payload) => {
-      // Un fichier a été supprimé, rafraîchir le quota
-      useStorageStore.getState().refreshQuota();
-    },
-  )
-  .subscribe();

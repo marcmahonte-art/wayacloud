@@ -29,12 +29,10 @@ export async function GET(request: Request) {
 
   if (error) return NextResponse.json({ message: error.message }, { status: 500 });
 
-  const files = await Promise.all(
-    (data ?? []).map(async (file: any) => ({
-      ...file,
-      url: file.object_key ? await generatePresignedGet(file.object_key).catch(() => "") : "",
-    })),
-  );
+  const files = (data ?? []).map((file: any) => ({
+    ...file,
+    url: "", // Ne pas générer d'URL de présignature pour la liste complète afin d'économiser les performances serveur
+  }));
 
   return NextResponse.json(files);
 }

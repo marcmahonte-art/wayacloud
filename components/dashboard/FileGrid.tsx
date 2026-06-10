@@ -20,6 +20,18 @@ const CATEGORIES = [
 ]
 
 interface FileGridProps {
+  files: FileCardData[]
+  loading: boolean
+  loadingMore: boolean
+  error: string | null
+  hasMore: boolean
+  total: number
+  observerRef: (node: HTMLDivElement | null) => void
+  refresh: () => void
+  category: string
+  setCategory: (c: string) => void
+  search: string
+  setSearch: (s: string) => void
   onPreview: (file: FileCardData) => void
   onUpload: () => void
   onBatchDelete: (ids: string[]) => void
@@ -29,28 +41,33 @@ interface FileGridProps {
   refreshTrigger?: number
 }
 
-export function FileGrid({ onPreview, onUpload, onBatchDelete, onBatchShare, onFolderClick, onKebabAction, refreshTrigger }: FileGridProps) {
+export function FileGrid({
+  files,
+  loading,
+  loadingMore,
+  error,
+  hasMore,
+  total,
+  observerRef,
+  refresh,
+  category,
+  setCategory,
+  search,
+  setSearch,
+  onPreview,
+  onUpload,
+  onBatchDelete,
+  onBatchShare,
+  onFolderClick,
+  onKebabAction,
+  refreshTrigger
+}: FileGridProps) {
   const gridView = useSettingsStore((s) => s.grid_view)
   const toggleGridView = useSettingsStore((s) => s.toggleGridView)
 
-  const searchParams = useSearchParams()
-  const q = searchParams ? searchParams.get("q") || "" : ""
-
-  const [category, setCategory] = useState("")
-  const [search, setSearch] = useState(q)
-
-  useEffect(() => {
-    setSearch(q)
-  }, [q])
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [showSearch, setShowSearch] = useState(false)
   const [showDropZone, setShowDropZone] = useState(false)
-
-  const { files, loading, loadingMore, error, hasMore, total, observerRef, refresh } = useInfiniteFiles({
-    category,
-    search,
-    refreshTrigger,
-  })
 
   const storeFiles = useStorageStore((s) => s.files)
 
@@ -96,7 +113,7 @@ export function FileGrid({ onPreview, onUpload, onBatchDelete, onBatchShare, onF
   const handleCategoryClick = useCallback((catId: string) => {
     setCategory(catId)
     onFolderClick(catId)
-  }, [onFolderClick])
+  }, [onFolderClick, setCategory])
 
   const handleFileClick = useCallback((file: FileCardData) => {
     onPreview(file)

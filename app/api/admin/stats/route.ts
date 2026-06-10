@@ -18,48 +18,68 @@ export async function GET() {
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString()
   const weekStart = new Date(now.getTime() - 7 * 86400000).toISOString()
 
-  const [usersRes, filesRes, storageRes, paymentsRes, subsRes, activitiesRes, aiRes, whatsappRes] = await Promise.all([
-    supabase.from("profiles").select("id, role, created_at", { count: "exact" }),
-    supabase.from("files").select("id, size_bytes, mime_type, created_at, is_trashed", { count: "exact" }).eq("is_trashed", false),
-    supabase.from("storage_quotas").select("storage_used_bytes, storage_limit_bytes"),
-    supabase.from("payments").select("id, amount_fcfa, status, created_at"),
-    supabase.from("subscriptions").select("id, plan_id, is_active, is_trial, user_id, plan_id"),
-    supabase.from("activities").select("id, type, created_at").gte("created_at", todayStart),
-    supabase.from("ai_events").select("id, action, created_at"),
+  // Interroger la vue d'agrégation SQL pré-calculée dashboard_metrics
+  const { data: metrics, error: metricsErr } = await supabase
+    .from("dashboard_metrics")
+    .select("*")
+    .limit(1)
+    .maybeSingle()
+
+  if (metricsErr) {
+    return NextResponse.json({ error: metricsErr.message }, { status: 500 })
+  }
+
+  // Si la vue n'a pas encore de données ou renvoie null, on prend des fallbacks à 0
+  const m = metrics || {
+    total_users: 0,
+    new_users_week: 0,
+    new_users_today: 0,
+    total_files: 0,
+    today_uploads: 0,
+    total_storage_bytes: 0,
+    total_limit_bytes: 0,
+    monthly_revenue: 0,
+    total_revenue: 0,
+    failed_payments: 0,
+    premium_subscribers: 0,
+    trial_users: 0,
+    total_active_subscriptions: 0,
+    total_ai_requests: 0,
+    whatsapp_protected_users: 0,
+  }
+
+  // Répartition par type de fichier via des requêtes SQL count ciblées (Promises parallèles)
+  const [imagesCount, videosCount, audiosCount, pdfsCount, totalFilesCount] = await Promise.all([
     supabase.from("files").select("id", { count: "exact", head: true }).eq("is_trashed", false).ilike("mime_type", "image/%"),
+    supabase.from("files").select("id", { count: "exact", head: true }).eq("is_trashed", false).ilike("mime_type", "video/%"),
+    supabase.from("files").select("id", { count: "exact", head: true }).eq("is_trashed", false).ilike("mime_type", "audio/%"),
+    supabase.from("files").select("id", { count: "exact", head: true }).eq("is_trashed", false).or("mime_type.ilike.application/pdf,name.ilike.%.pdf"),
+    supabase.from("files").select("id", { count: "exact", head: true }).eq("is_trashed", false),
   ])
 
-  const totalUsers = usersRes.count ?? 0
-  const users = usersRes.data ?? []
+  const imgs = imagesCount.count ?? 0
+  const vids = videosCount.count ?? 0
+  const auds = audiosCount.count ?? 0
+  const pdfs = pdfsCount.count ?? 0
+  const totalF = totalFilesCount.count ?? 0
+  const others = Math.max(0, totalF - (imgs + vids + auds + pdfs))
 
-  const newUsersThisWeek = users.filter(u => u.created_at >= weekStart).length
-  const todayLogins = users.filter(u => u.created_at >= todayStart).length
+  const typeDistribution = {
+    images: imgs,
+    videos: vids,
+    audios: auds,
+    pdfs: pdfs,
+    others: others,
+  }
 
-  const premiumSubs = subsRes.data?.filter(s => s.is_active && !s.is_trial) ?? []
-  const trialUsers = subsRes.data?.filter(s => s.is_trial) ?? []
-
-  const totalFiles = filesRes.count ?? 0
-  const totalStorageBytes = storageRes.data?.reduce((s, q) => s + Number(q.storage_used_bytes), 0) ?? 0
-  const totalLimitBytes = storageRes.data?.reduce((s, q) => s + Number(q.storage_limit_bytes), 0) ?? 0
-
-  const todayUploads = filesRes.data?.filter(f => f.created_at >= todayStart).length ?? 0
-
-  const payments = paymentsRes.data ?? []
-  const monthlyRevenue = payments
-    .filter(p => p.status === "completed" && new Date(p.created_at) > new Date(now.getTime() - 30 * 86400000))
-    .reduce((s, p) => s + p.amount_fcfa, 0)
-  const totalRevenue = payments
-    .filter(p => p.status === "completed")
-    .reduce((s, p) => s + p.amount_fcfa, 0)
-
-  const totalAiRequests = aiRes.data?.length ?? 0
-
+  // Top stockage (limité à 10 par la base de données)
   const topUsers = await supabase
     .from("storage_quotas")
     .select("user_id, storage_used_bytes")
     .order("storage_used_bytes", { ascending: false })
     .limit(10)
 
+  // Plus gros fichiers (limité à 10 par la base de données)
   const largestFiles = await supabase
     .from("files")
     .select("id, name, size_bytes, mime_type, owner_id, created_at")
@@ -67,27 +87,18 @@ export async function GET() {
     .order("size_bytes", { ascending: false })
     .limit(10)
 
-  const typeDistribution = (filesRes.data ?? []).reduce<Record<string, number>>((acc, f) => {
-    const cat = f.mime_type?.startsWith("image/") ? "images"
-      : f.mime_type?.startsWith("video/") ? "videos"
-      : f.mime_type?.startsWith("audio/") ? "audios"
-      : f.mime_type?.includes("pdf") ? "pdfs"
-      : "others"
-    acc[cat] = (acc[cat] || 0) + 1
-    return acc
-  }, {})
+  const totalUsers = m.total_users
+  const totalStorageBytes = Number(m.total_storage_bytes)
+  const totalLimitBytes = Number(m.total_limit_bytes)
 
-  const totalWhatsApp = whatsappRes.count ?? 0
-
-  const activeSubsCount = subsRes.data?.filter(s => s.is_active).length ?? 0
-  const failedPayments = payments.filter(p => p.status === "failed" || p.status === "expired").length
-
+  // Activités récentes d'upload sur les 90 derniers jours (limitée aux 500 dernières lignes pour éviter les crashs)
   const storageGrowth = await supabase
     .from("activities")
     .select("created_at, metadata")
     .eq("type", "upload")
     .gte("created_at", new Date(now.getTime() - 90 * 86400000).toISOString())
     .order("created_at", { ascending: true })
+    .limit(500)
 
   const dailyUploads: Record<string, number> = {}
   const dailyStorage: Record<string, number> = {}
@@ -103,10 +114,10 @@ export async function GET() {
   return NextResponse.json({
     users: {
       total: totalUsers,
-      newThisWeek: newUsersThisWeek,
-      todayActive: todayLogins,
-      premiumSubscribers: premiumSubs.length,
-      trialUsers: trialUsers.length,
+      newThisWeek: m.new_users_week,
+      todayActive: m.new_users_today,
+      premiumSubscribers: m.premium_subscribers,
+      trialUsers: m.trial_users,
     },
     storage: {
       totalBytes: totalStorageBytes,
@@ -129,27 +140,27 @@ export async function GET() {
       })),
     },
     files: {
-      total: totalFiles,
-      todayUploads,
+      total: totalF,
+      todayUploads: m.today_uploads,
       typeDistribution,
     },
     revenue: {
-      monthly: monthlyRevenue,
-      total: totalRevenue,
-      monthlyFormatted: `${(monthlyRevenue).toLocaleString()} FCFA`,
-      totalFormatted: `${(totalRevenue).toLocaleString()} FCFA`,
-      failedPayments,
+      monthly: m.monthly_revenue,
+      total: m.total_revenue,
+      monthlyFormatted: `${(m.monthly_revenue).toLocaleString()} FCFA`,
+      totalFormatted: `${(m.total_revenue).toLocaleString()} FCFA`,
+      failedPayments: m.failed_payments,
     },
     subscriptions: {
-      active: activeSubsCount,
-      premium: premiumSubs.length,
-      trial: trialUsers.length,
+      active: m.total_active_subscriptions,
+      premium: m.premium_subscribers,
+      trial: m.trial_users,
     },
     ai: {
-      totalRequests: totalAiRequests,
+      totalRequests: m.total_ai_requests,
     },
     whatsapp: {
-      totalProtected: totalWhatsApp,
+      totalProtected: m.whatsapp_protected_users,
     },
     growth: {
       dailyUploads,
