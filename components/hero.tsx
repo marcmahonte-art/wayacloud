@@ -220,10 +220,10 @@ export function Hero({ onAuthOpen, onGetStarted }: HeroProps) {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 1.0 + i * 0.15 }}
-              className="rounded-2xl border border-white/10 bg-white/5 p-3 sm:p-4 backdrop-blur-md"
+              className="rounded-2xl border border-white/10 bg-white/5 p-2.5 sm:p-3 backdrop-blur-md"
             >
-              <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-white">{stat.value}</p>
-              <p className="mt-1 text-[10px] sm:text-[11px] lg:text-xs leading-tight text-white/60">{stat.label}</p>
+              <p className="text-lg sm:text-xl lg:text-2xl font-bold text-white">{stat.value}</p>
+              <p className="mt-1 text-[9px] sm:text-[10px] lg:text-[11px] leading-tight text-white/60">{stat.label}</p>
             </motion.div>
           ))}
         </div>
@@ -231,7 +231,7 @@ export function Hero({ onAuthOpen, onGetStarted }: HeroProps) {
 
       {/* Mobile Stats */}
       <motion.div
-        className="absolute bottom-6 left-6 right-6 z-10 grid grid-cols-3 gap-2 rounded-2xl border border-white/10 bg-white/5 p-3 backdrop-blur-md md:hidden"
+        className="absolute bottom-5 left-5 right-5 z-10 grid grid-cols-3 gap-2 rounded-2xl border border-white/10 bg-white/5 p-2.5 backdrop-blur-md md:hidden"
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, delay: 1.2 }}
@@ -242,8 +242,8 @@ export function Hero({ onAuthOpen, onGetStarted }: HeroProps) {
           ["+24k", "créateurs"],
         ].map(([value, label]) => (
           <div key={value} className="text-center">
-            <p className="text-lg font-bold leading-none text-white">{value}</p>
-            <p className="mt-1 text-[10px] leading-tight text-white/60">{label}</p>
+            <p className="text-base font-bold leading-none text-white">{value}</p>
+            <p className="mt-1 text-[9px] leading-tight text-white/60">{label}</p>
           </div>
         ))}
       </motion.div>
