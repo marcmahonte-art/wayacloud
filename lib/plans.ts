@@ -177,7 +177,6 @@ export function formatStorage(bytes: number): string {
 }
 
 export const DISPLAY_PLANS: PlanKey[] = [
-  "free",
   "whatsapp_1500",
   "famille_3999",
   "pro_6999",
