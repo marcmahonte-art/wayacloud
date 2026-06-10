@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Menu, X } from "lucide-react"
 import Link from "next/link"
@@ -25,6 +25,18 @@ const statCards = [
 
 export function Hero({ onAuthOpen, onGetStarted }: HeroProps) {
   const [mobileOpen, setMobileOpen] = useState(false)
+
+  // Bloquer le scroll du body quand le menu mobile est ouvert
+  useEffect(() => {
+    if (mobileOpen) {
+      document.body.style.overflow = "hidden"
+    } else {
+      document.body.style.overflow = ""
+    }
+    return () => {
+      document.body.style.overflow = ""
+    }
+  }, [mobileOpen])
 
   return (
     <section className="relative h-screen max-h-screen w-full overflow-hidden bg-black font-readex">
@@ -90,45 +102,58 @@ export function Hero({ onAuthOpen, onGetStarted }: HeroProps) {
 
       <AnimatePresence>
         {mobileOpen && (
-          <motion.aside
-            initial={{ x: "100%" }}
-            animate={{ x: 0 }}
-            exit={{ x: "100%" }}
-            transition={{ duration: 0.25, ease: "easeInOut" }}
-            className="fixed inset-y-0 right-0 z-40 flex w-[85vw] max-w-sm flex-col rounded-l-[24px] border-l border-white/10 bg-white/10 p-6 pt-[calc(env(safe-area-inset-top)+24px)] shadow-lg backdrop-blur-xl sm:p-8"
-          >
-            <button
-              className="mb-6 flex h-10 w-10 items-center justify-center self-end rounded-xl bg-white/10 text-white transition-colors duration-200 hover:bg-white/20"
+          <>
+            {/* Overlay */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
               onClick={() => setMobileOpen(false)}
-              aria-label="Close menu"
+              className="fixed inset-0 z-[9998] bg-black/45 backdrop-blur-[4px]"
+            />
+
+            {/* Drawer */}
+            <motion.aside
+              initial={{ x: "100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "100%" }}
+              transition={{ duration: 0.25, ease: "easeInOut" }}
+              className="fixed inset-y-0 right-0 z-[9999] flex w-[85vw] max-w-[360px] flex-col rounded-l-[32px] border-l border-white/10 bg-[#121212] p-6 pt-[calc(env(safe-area-inset-top)+24px)] shadow-2xl overflow-y-auto sm:p-8"
             >
-              <X size={24} />
-            </button>
-            <nav className="mt-4 flex flex-col gap-6">
-              {navLinks.map((link) => (
-                <Link
-                  key={link.label}
-                  href={link.href}
-                  onClick={() => setMobileOpen(false)}
-                  className="text-lg text-white/70 transition-colors duration-200 hover:text-white"
+              <button
+                className="mb-6 flex h-10 w-10 items-center justify-center self-end rounded-xl bg-white/10 text-white transition-colors duration-200 hover:bg-white/20"
+                onClick={() => setMobileOpen(false)}
+                aria-label="Close menu"
+              >
+                <X size={24} />
+              </button>
+              <nav className="mt-4 flex flex-col gap-6">
+                {navLinks.map((link) => (
+                  <Link
+                    key={link.label}
+                    href={link.href}
+                    onClick={() => setMobileOpen(false)}
+                    className="text-lg text-white/70 transition-colors duration-200 hover:text-white"
+                  >
+                    {link.label}
+                  </Link>
+                ))}
+                <button
+                  onClick={() => { setMobileOpen(false); onAuthOpen?.() }}
+                  className="w-full rounded-xl border border-white/20 py-3 text-base font-semibold text-white backdrop-blur-sm transition-all duration-200 hover:bg-white/10"
                 >
-                  {link.label}
-                </Link>
-              ))}
-              <button
-                onClick={() => { setMobileOpen(false); onAuthOpen?.() }}
-                className="w-full rounded-xl border border-white/20 py-3 text-base font-semibold text-white backdrop-blur-sm transition-all duration-200 hover:bg-white/10"
-              >
-                Connexion
-              </button>
-              <button
-                onClick={() => { setMobileOpen(false); onGetStarted?.() }}
-                className="w-full rounded-xl bg-[#FF6B00] py-3 text-base font-semibold text-white transition-all duration-200 hover:bg-[#FF7A1A]"
-              >
-                Essayer gratuitement
-              </button>
-            </nav>
-          </motion.aside>
+                  Connexion
+                </button>
+                <button
+                  onClick={() => { setMobileOpen(false); onGetStarted?.() }}
+                  className="w-full rounded-xl bg-[#FF6B00] py-3 text-base font-semibold text-white transition-all duration-200 hover:bg-[#FF7A1A]"
+                >
+                  Essayer gratuitement
+                </button>
+              </nav>
+            </motion.aside>
+          </>
         )}
       </AnimatePresence>
 
