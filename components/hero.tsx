@@ -150,9 +150,8 @@ export function Hero({ onAuthOpen, onGetStarted }: HeroProps) {
           <motion.span
             className="block select-none font-bold leading-[1.1] text-[#FFD0B3]"
             style={{
-              fontSize: "clamp(1.9rem, min(7vw, 10.5vh), 5.5rem)",
+              fontSize: "clamp(2.2rem, min(8vw, 12vh), 6rem)",
               marginTop: "clamp(0.1rem, min(0.5vw, 0.8vh), 0.4rem)",
-              marginLeft: "clamp(0.75rem, 4vw, 3rem)",
             }}
             initial={{ opacity: 0, y: 80 }}
             animate={{ opacity: 1, y: 0 }}
@@ -165,9 +164,8 @@ export function Hero({ onAuthOpen, onGetStarted }: HeroProps) {
           <motion.span
             className="block select-none font-bold leading-[1.1] text-white"
             style={{
-              fontSize: "clamp(1.7rem, min(6vw, 9.5vh), 5rem)",
+              fontSize: "clamp(2.2rem, min(8vw, 12vh), 6rem)",
               marginTop: "clamp(0.1rem, min(0.5vw, 0.8vh), 0.4rem)",
-              marginLeft: "clamp(1.5rem, 8vw, 6rem)",
             }}
             initial={{ opacity: 0, y: 80 }}
             animate={{ opacity: 1, y: 0 }}
