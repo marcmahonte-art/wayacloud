@@ -4,6 +4,7 @@ import { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Menu, X } from "lucide-react"
 import Link from "next/link"
+import { Logo } from "@/components/ui/Logo"
 
 interface HeroProps {
   onAuthOpen: () => void
@@ -43,11 +44,11 @@ export function Hero({ onAuthOpen, onGetStarted }: HeroProps) {
 
       <nav className="absolute left-0 right-0 top-0 z-30 flex h-[80px] items-center px-6 md:px-10 lg:px-14">
         <div className="mx-auto flex w-full max-w-7xl items-center justify-between">
-          <Link href="/" className="flex items-center gap-2">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z" fill="#FF6B00"/>
-            </svg>
-            <span className="text-lg font-semibold text-white">WayaCloud</span>
+          <Link href="/" className="flex items-center shrink-0">
+            <Logo
+              variant="light"
+              className="w-[190px] transition-all duration-200 sm:w-[210px]"
+            />
           </Link>
 
           <div className="hidden items-center gap-10 lg:flex">
