@@ -1,8 +1,8 @@
 "use client"
 
-import Image from "next/image"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
+import { Logo } from "@/components/ui/Logo"
 
 interface AuthCardProps {
   children: React.ReactNode
@@ -27,14 +27,7 @@ export function AuthHeader({ title, subtitle }: { title: string; subtitle?: stri
     <div className="text-center mb-8">
       <div className="flex justify-center mb-6">
         <Link href="/" className="inline-block transition-transform hover:scale-105 active:scale-95">
-          <Image 
-            src="/assets/waya-logo.png" 
-            alt="WayaCloud" 
-            width={160} 
-            height={45} 
-            className="object-contain"
-            priority
-          />
+          <Logo className="w-[160px] text-[#111827]" />
         </Link>
       </div>
       <h1 className="text-2xl font-bold text-dark tracking-tight">{title}</h1>

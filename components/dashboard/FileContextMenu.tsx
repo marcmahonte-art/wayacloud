@@ -35,15 +35,15 @@ const menuGroups: { label: string; items: MenuAction[] }[] = [
   {
     label: "actions",
     items: [
-      { id: "open", label: "Ouvrir", icon: Eye, shortcut: "⏎" },
-      { id: "download", label: "Télécharger", icon: Download, shortcut: "⌘D" },
-      { id: "share", label: "Partager", icon: Share2, shortcut: "⌘S" },
+      { id: "open", label: "Ouvrir", icon: Eye, shortcut: "↵" },
+      { id: "download", label: "Télécharger", icon: Download, shortcut: "Ctrl+D" },
+      { id: "share", label: "Partager", icon: Share2, shortcut: "Ctrl+S" },
     ],
   },
   {
     label: "details",
     items: [
-      { id: "info", label: "Informations", icon: Info, shortcut: "⌘I", divider: true },
+      { id: "info", label: "Informations", icon: Info, shortcut: "Ctrl+I", divider: true },
       { id: "rename", label: "Renommer", icon: Pencil },
       { id: "move", label: "Déplacer vers", icon: Move },
       { id: "copy", label: "Copier vers", icon: Copy },
@@ -52,7 +52,7 @@ const menuGroups: { label: string; items: MenuAction[] }[] = [
   {
     label: "organize",
     items: [
-      { id: "label", label: "Étiquette / Couleur", icon: Tag, shortcut: "⌘L", divider: true },
+      { id: "label", label: "Étiquette / Couleur", icon: Tag, shortcut: "Ctrl+L", divider: true },
       { id: "favorite", label: "Ajouter aux favoris", icon: Star },
     ],
   },

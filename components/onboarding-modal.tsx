@@ -6,13 +6,13 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Mail, Phone, Lock, User, MapPin, Users, ArrowRight, ArrowLeft, Loader2, Sparkles, Check } from "lucide-react"
 import { useRouter } from "next/navigation"
-import Image from "next/image"
 import Link from "next/link"
 import {
   Dialog,
   DialogContent,
 } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
+import { Logo } from "@/components/ui/Logo"
 import { onboardingSchema, type OnboardingFormData } from "@/lib/auth/validation"
 import { signUpWithOnboarding, signInWithEmail } from "@/lib/auth/service"
 import { SocialAuth } from "@/components/auth/SocialAuth"
@@ -116,14 +116,7 @@ export function OnboardingModal({ open, onOpenChange }: OnboardingModalProps) {
 
           <div className="flex justify-center mb-6 mt-2">
             <Link href="/" className="inline-block transition-transform hover:scale-105 active:scale-95">
-              <Image 
-                src="/assets/waya-logo.png" 
-                alt="WayaCloud" 
-                width={140} 
-                height={40} 
-                className="object-contain"
-                priority
-              />
+              <Logo className="w-[140px] text-[#111827]" />
             </Link>
           </div>
 
@@ -409,9 +402,9 @@ export function OnboardingModal({ open, onOpenChange }: OnboardingModalProps) {
 
                       <p className="text-xs text-helper text-center">
                         En créant un compte, vous acceptez nos{" "}
-                        <a href="#" className="text-primary hover:underline">
+                        <Link href="/cgu" className="text-primary hover:underline" onClick={() => onOpenChange(false)}>
                           conditions d&apos;utilisation
-                        </a>
+                        </Link>
                       </p>
                     </motion.div>
                   )}

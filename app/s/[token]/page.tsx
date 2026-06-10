@@ -1,5 +1,6 @@
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { notFound } from "next/navigation";
+import { hashShareToken } from "@/lib/share";
 import { SharePageClient } from "./SharePageClient";
 
 interface PageProps {
@@ -8,11 +9,12 @@ interface PageProps {
 
 export default async function SharePage({ params }: PageProps) {
   const supabase = createAdminSupabaseClient();
+  const tokenHash = hashShareToken(params.token);
 
   const { data: link } = await supabase
     .from("share_links")
     .select("id, file_id, expires_at, max_downloads, download_count, revoked_at")
-    .eq("token_hash", params.token)
+    .eq("token_hash", tokenHash)
     .single();
 
   if (!link) notFound();

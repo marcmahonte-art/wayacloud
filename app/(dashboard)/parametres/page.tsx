@@ -4,10 +4,14 @@ import { useState, useEffect } from "react";
 import {
   User, Shield, HardDrive, Bell, CreditCard, SlidersHorizontal,
   Smartphone, Globe, Save, Check, Loader2, Eye, EyeOff,
-  LogOut, Trash2, AlertTriangle, Moon, Sun, Camera,
+  LogOut, Trash2, AlertTriangle, Moon, Sun, Camera, X,
 } from "lucide-react";
 import { useAuth } from "@/providers/AuthProvider";
 import { useRouter } from "next/navigation";
+import { useSettingsStore } from "@/lib/store/settings-store";
+import { createClient } from "@/lib/supabase/client";
+
+const supabase = createClient();
 
 type SettingsTab = "profile" | "security" | "storage" | "notifications" | "subscription" | "preferences" | "devices";
 
@@ -27,13 +31,27 @@ export default function SettingsPage() {
   const [saved, setSaved] = useState(false);
   const { profile, logout } = useAuth();
   const router = useRouter();
+  const [saveHandler, setSaveHandler] = useState<(() => Promise<void>) | null>(null);
 
-  const showSaved = async () => {
-    setSaving(true);
-    await new Promise((r) => setTimeout(r, 600));
-    setSaving(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+  const showSaved = async (saveFn?: () => Promise<void>) => {
+    if (saveFn) {
+      setSaving(true);
+      try {
+        await saveFn();
+      } catch (e) {
+        setSaving(false);
+        return;
+      }
+      setSaving(false);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } else {
+      setSaving(true);
+      await new Promise((r) => setTimeout(r, 600));
+      setSaving(false);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    }
   };
 
   return (
@@ -73,28 +91,33 @@ export default function SettingsPage() {
               <h2 className="text-lg font-bold text-dark">
                 {tabs.find((t) => t.id === activeTab)?.label}
               </h2>
-              <button
-                onClick={showSaved}
-                disabled={saving}
-                className="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-[13px] font-bold text-white hover:bg-primary-light transition-colors disabled:opacity-70"
-              >
-                {saving ? (
-                  <Loader2 size={16} className="animate-spin" />
-                ) : saved ? (
-                  <Check size={16} />
-                ) : (
-                  <Save size={16} />
-                )}
-                {saving ? "Enregistrement..." : saved ? "Enregistré" : "Enregistrer"}
-              </button>
+              {(activeTab === "profile" || activeTab === "preferences" || activeTab === "notifications") && (
+                <button
+                  onClick={() => {
+                    const el = document.querySelector(`[data-save-handler="${activeTab}"]`);
+                    if (el) (el as HTMLButtonElement).click();
+                  }}
+                  disabled={saving}
+                  className="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-[13px] font-bold text-white hover:bg-primary-light transition-colors disabled:opacity-70"
+                >
+                  {saving ? (
+                    <Loader2 size={16} className="animate-spin" />
+                  ) : saved ? (
+                    <Check size={16} />
+                  ) : (
+                    <Save size={16} />
+                  )}
+                  {saving ? "Enregistrement..." : saved ? "Enregistré" : "Enregistrer"}
+                </button>
+              )}
             </div>
 
-            {activeTab === "profile" && <ProfileSection showSaved={showSaved} />}
-            {activeTab === "security" && <SecuritySection />}
+            {activeTab === "profile" && <ProfileSection showSaved={showSaved} saving={saving} setSaving={setSaving} />}
+            {activeTab === "security" && <SecuritySection showSaved={showSaved} />}
             {activeTab === "storage" && <StorageSection />}
-            {activeTab === "notifications" && <NotificationsSection showSaved={showSaved} />}
+            {activeTab === "notifications" && <NotificationsSection />}
             {activeTab === "subscription" && <SubscriptionSection router={router} />}
-            {activeTab === "preferences" && <PreferencesSection showSaved={showSaved} />}
+            {activeTab === "preferences" && <PreferencesSection showSaved={showSaved} saving={saving} setSaving={setSaving} />}
             {activeTab === "devices" && <DevicesSection />}
           </div>
         </div>
@@ -103,10 +126,11 @@ export default function SettingsPage() {
   );
 }
 
-function ProfileSection({ showSaved }: { showSaved: () => Promise<void> }) {
-  const { profile, logout } = useAuth();
+function ProfileSection({ showSaved, saving, setSaving }: { showSaved: (fn?: () => Promise<void>) => Promise<void>, saving: boolean, setSaving: (v: boolean) => void }) {
+  const { profile, logout, refresh } = useAuth();
   const router = useRouter();
   const safeProfile = {
+    id: profile?.id ?? "",
     first_name: profile?.first_name ?? "",
     last_name: profile?.last_name ?? "",
     phone: profile?.phone ?? "",
@@ -122,6 +146,20 @@ function ProfileSection({ showSaved }: { showSaved: () => Promise<void> }) {
   });
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+
+  const saveProfile = async () => {
+    const { error } = await supabase
+      .from("profiles")
+      .update({
+        first_name: form.first_name,
+        last_name: form.last_name,
+        phone: form.phone,
+        city: form.city,
+      })
+      .eq("id", safeProfile.id);
+    if (error) throw error;
+    await refresh();
+  };
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -143,6 +181,7 @@ function ProfileSection({ showSaved }: { showSaved: () => Promise<void> }) {
       if (!res.ok) throw new Error();
       const data = await res.json();
       setAvatarPreview(data.avatar_url);
+      await refresh();
     } catch {
       setAvatarPreview(null);
       alert("Échec de l'upload de l'avatar");
@@ -157,6 +196,7 @@ function ProfileSection({ showSaved }: { showSaved: () => Promise<void> }) {
     try {
       await fetch("/api/avatar", { method: "DELETE" });
       setAvatarPreview(null);
+      await refresh();
     } catch {
       alert("Échec de la suppression");
     } finally {
@@ -169,6 +209,12 @@ function ProfileSection({ showSaved }: { showSaved: () => Promise<void> }) {
 
   return (
     <div className="space-y-6">
+      <button
+        data-save-handler="profile"
+        onClick={() => showSaved(saveProfile)}
+        className="hidden"
+      />
+
       <div className="flex items-center gap-4">
         <label className="relative cursor-pointer group">
           {avatarSrc ? (
@@ -232,10 +278,47 @@ function ProfileSection({ showSaved }: { showSaved: () => Promise<void> }) {
   );
 }
 
-function SecuritySection() {
+function SecuritySection({ showSaved }: { showSaved: (fn?: () => Promise<void>) => Promise<void> }) {
   const [showPassword, setShowPassword] = useState(false);
+  const [statusMsg, setStatusMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [form, setForm] = useState({ current: "", newPass: "", confirm: "" });
-  const [twoFactor, setTwoFactor] = useState(false);
+  const [changing, setChanging] = useState(false);
+
+  const handleChangePassword = async () => {
+    setStatusMsg(null);
+    if (!form.current || !form.newPass || !form.confirm) {
+      setStatusMsg({ type: "error", text: "Veuillez remplir tous les champs" });
+      return;
+    }
+    if (form.newPass.length < 6) {
+      setStatusMsg({ type: "error", text: "Le mot de passe doit faire au moins 6 caractères" });
+      return;
+    }
+    if (form.newPass !== form.confirm) {
+      setStatusMsg({ type: "error", text: "Les mots de passe ne correspondent pas" });
+      return;
+    }
+    setChanging(true);
+    try {
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: (await supabase.auth.getUser()).data.user?.email ?? "",
+        password: form.current,
+      });
+      if (signInError) {
+        setStatusMsg({ type: "error", text: "Mot de passe actuel incorrect" });
+        setChanging(false);
+        return;
+      }
+      const { error } = await supabase.auth.updateUser({ password: form.newPass });
+      if (error) throw error;
+      setStatusMsg({ type: "success", text: "Mot de passe modifié avec succès" });
+      setForm({ current: "", newPass: "", confirm: "" });
+    } catch {
+      setStatusMsg({ type: "error", text: "Erreur lors du changement de mot de passe" });
+    } finally {
+      setChanging(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -274,47 +357,87 @@ function SecuritySection() {
               className="w-full rounded-lg border border-[#EAE5E0] bg-white px-3.5 py-2.5 text-[14px] outline-none focus:border-primary/40 focus:ring-1 focus:ring-primary/20 transition-colors"
             />
           </div>
+          <button
+            onClick={handleChangePassword}
+            disabled={changing}
+            className="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-[13px] font-bold text-white hover:bg-primary-light transition-colors disabled:opacity-70"
+          >
+            {changing ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+            {changing ? "Modification..." : "Changer le mot de passe"}
+          </button>
+          {statusMsg && (
+            <p className={`text-[13px] font-medium ${statusMsg.type === "success" ? "text-green-600" : "text-red-500"}`}>
+              {statusMsg.text}
+            </p>
+          )}
         </div>
       </div>
 
       <div className="border-t border-[#F0ECE6] pt-6">
         <h3 className="text-sm font-bold text-dark mb-4">Authentification à deux facteurs (2FA)</h3>
-        <div className="flex items-center justify-between rounded-xl border border-[#EAE5E0] bg-[#FAF9F7] p-4 max-w-md">
+        <div className="flex items-center justify-between rounded-xl border border-[#EAE5E0] bg-[#FAF9F7] p-4 max-w-md opacity-60">
           <div className="flex items-center gap-3">
             <Shield size={20} className="text-primary" />
             <div>
               <p className="text-[13px] font-semibold text-dark">Authentification à deux facteurs</p>
-              <p className="text-[12px] text-[#9CA3AF]">Ajoutez une couche de sécurité supplémentaire</p>
+              <p className="text-[12px] text-[#9CA3AF]">Bientôt disponible</p>
             </div>
           </div>
-          <button
-            onClick={() => setTwoFactor(!twoFactor)}
-            className={`relative h-7 w-12 rounded-full transition-colors ${twoFactor ? "bg-primary" : "bg-[#EAE5E0]"}`}
-          >
-            <div className={`h-5 w-5 rounded-full bg-white shadow-sm transition-transform absolute top-1 ${twoFactor ? "translate-x-6" : "translate-x-1"}`} />
-          </button>
-        </div>
-      </div>
-
-      <div className="border-t border-[#F0ECE6] pt-6">
-        <h3 className="text-sm font-bold text-dark mb-4">Sessions actives</h3>
-        <div className="space-y-3 max-w-md">
-          {["Chrome - Windows", "Safari - iPhone 15"].map((device) => (
-            <div key={device} className="flex items-center justify-between rounded-xl border border-[#EAE5E0] bg-[#FAF9F7] p-3.5">
-              <div className="flex items-center gap-3">
-                <Globe size={18} className="text-[#69708A]" />
-                <span className="text-[13px] font-medium text-dark">{device}</span>
-              </div>
-              <span className="text-[11px] text-green-600 font-semibold bg-green-50 px-2 py-0.5 rounded-full">Actif</span>
-            </div>
-          ))}
+          <div className="relative h-7 w-12 rounded-full bg-[#EAE5E0] cursor-not-allowed">
+            <div className="h-5 w-5 rounded-full bg-white shadow-sm absolute top-1 left-1" />
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
+function formatBytes(bytes: number): string {
+  if (bytes === 0) return "0 o";
+  const k = 1024;
+  const sizes = ["o", "Ko", "Mo", "Go", "To"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
+}
+
 function StorageSection() {
+  const [stats, setStats] = useState<{
+    usedBytes: number;
+    limitBytes: number;
+    usagePercent: number;
+    totalFiles: number;
+    categories: Record<string, { count: number; bytes: number }>;
+  } | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/storage/stats")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data) setStats(data);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="space-y-4 animate-pulse">
+        <div className="h-24 rounded-xl bg-[#F0ECE6]" />
+        <div className="grid gap-4 sm:grid-cols-3">
+          {[1, 2, 3].map((i) => <div key={i} className="h-28 rounded-xl bg-[#F0ECE6]" />)}
+        </div>
+      </div>
+    );
+  }
+
+  const cats = stats?.categories ?? {};
+  const catEntries = [
+    { key: "image", label: "Images", color: "text-orange-600", bg: "bg-orange-50" },
+    { key: "video", label: "Vidéos", color: "text-violet-600", bg: "bg-violet-50" },
+    { key: "document", label: "Documents", color: "text-blue-600", bg: "bg-blue-50" },
+  ];
+
   return (
     <div className="space-y-6">
       <div className="rounded-xl border border-[#EAE5E0] bg-[#FAF9F7] p-5">
@@ -323,31 +446,32 @@ function StorageSection() {
           <button className="text-[12px] font-semibold text-primary hover:underline">Gérer mon forfait</button>
         </div>
         <div className="h-3 rounded-full bg-[#EAE5E0] overflow-hidden">
-          <div className="h-full rounded-full bg-primary" style={{ width: "35%" }} />
+          <div className="h-full rounded-full bg-primary" style={{ width: `${Math.min(stats?.usagePercent ?? 0, 100)}%` }} />
         </div>
         <div className="mt-3 flex items-center justify-between text-[12px]">
-          <span className="font-semibold text-[#69708A]">3.5 Go / 20 Go utilisés</span>
-          <span className="font-medium text-[#9CA3AF]">35%</span>
+          <span className="font-semibold text-[#69708A]">
+            {formatBytes(stats?.usedBytes ?? 0)} / {formatBytes(stats?.limitBytes ?? 0)} utilisés
+          </span>
+          <span className="font-medium text-[#9CA3AF]">{stats?.usagePercent ?? 0}%</span>
         </div>
       </div>
       <div className="grid gap-4 sm:grid-cols-3">
-        {[
-          { label: "Images", size: "1.8 Go", files: "142 fichiers", color: "text-orange-600", bg: "bg-orange-50" },
-          { label: "Vidéos", size: "1.2 Go", files: "18 fichiers", color: "text-violet-600", bg: "bg-violet-50" },
-          { label: "Documents", size: "512 Mo", files: "67 fichiers", color: "text-blue-600", bg: "bg-blue-50" },
-        ].map((item) => (
-          <div key={item.label} className={`rounded-xl ${item.bg} p-4`}>
-            <p className={`text-[13px] font-bold ${item.color}`}>{item.label}</p>
-            <p className="mt-2 text-lg font-bold text-dark">{item.size}</p>
-            <p className="text-[11px] text-[#69708A] font-medium">{item.files}</p>
-          </div>
-        ))}
+        {catEntries.map(({ key, label, color, bg }) => {
+          const c = cats[key];
+          return (
+            <div key={key} className={`rounded-xl ${bg} p-4`}>
+              <p className={`text-[13px] font-bold ${color}`}>{label}</p>
+              <p className="mt-2 text-lg font-bold text-dark">{c ? formatBytes(c.bytes) : "0 o"}</p>
+              <p className="text-[11px] text-[#69708A] font-medium">{c?.count ?? 0} fichiers</p>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
 }
 
-function NotificationsSection({ showSaved }: { showSaved: () => Promise<void> }) {
+function NotificationsSection() {
   const [settings, setSettings] = useState({
     email: true,
     push: true,
@@ -468,14 +592,71 @@ function NotificationsSection({ showSaved }: { showSaved: () => Promise<void> })
 }
 
 function SubscriptionSection({ router }: { router: any }) {
-  const { subscription, remainingTrialDays } = useAuth();
+  const { subscription, remainingTrialDays, logout } = useAuth();
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
   const isFree = !subscription || subscription.plan_name === "Gratuit" || subscription.plan_price === 0
   const planName = isFree ? "Gratuit" : subscription?.plan_name || "Gratuit"
   const isTrial = remainingTrialDays > 0
   const planPrice = isFree ? 0 : (subscription?.plan_price ?? 0)
 
+  const handleDeleteAccount = async () => {
+    setDeleting(true);
+    setDeleteError("");
+    try {
+      const res = await fetch("/api/auth/delete-account", { method: "DELETE" });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Erreur lors de la suppression");
+      }
+      await logout();
+      router.push("/login");
+    } catch (e) {
+      setDeleteError((e as Error).message);
+    } finally {
+      setDeleting(false);
+      setShowDeleteConfirm(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-dark">Supprimer le compte</h3>
+              <button onClick={() => setShowDeleteConfirm(false)} className="text-[#9CA3AF] hover:text-dark">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="flex items-center gap-3 rounded-xl bg-red-50 p-4 mb-4">
+              <AlertTriangle size={20} className="text-red-500 shrink-0" />
+              <p className="text-[13px] text-red-700">
+                Cette action est irréversible. Toutes vos données (fichiers, sauvegardes, abonnements) seront définitivement supprimées.
+              </p>
+            </div>
+            {deleteError && <p className="text-[13px] text-red-500 mb-3">{deleteError}</p>}
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="flex-1 rounded-lg border border-[#EAE5E0] bg-white px-4 py-2.5 text-[13px] font-semibold text-dark hover:bg-[#F5F3F0] transition-colors"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handleDeleteAccount}
+                disabled={deleting}
+                className="flex-1 rounded-lg bg-red-600 px-4 py-2.5 text-[13px] font-bold text-white hover:bg-red-700 transition-colors disabled:opacity-70"
+              >
+                {deleting ? "Suppression..." : "Confirmer la suppression"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="rounded-xl border border-[#EAE5E0] bg-gradient-to-br from-violet-50 to-white p-6">
         <div className="flex items-start justify-between gap-4">
           <div>
@@ -523,7 +704,10 @@ function SubscriptionSection({ router }: { router: any }) {
       </div>
 
       <div className="border-t border-[#F0ECE6] pt-6">
-        <button className="inline-flex items-center gap-2 rounded-lg border border-red-200 bg-white px-5 py-2.5 text-[13px] font-semibold text-red-600 hover:bg-red-50 transition-colors">
+        <button
+          onClick={() => setShowDeleteConfirm(true)}
+          className="inline-flex items-center gap-2 rounded-lg border border-red-200 bg-white px-5 py-2.5 text-[13px] font-semibold text-red-600 hover:bg-red-50 transition-colors"
+        >
           <Trash2 size={16} />
           Supprimer mon compte
         </button>
@@ -533,30 +717,49 @@ function SubscriptionSection({ router }: { router: any }) {
   );
 }
 
-function PreferencesSection({ showSaved }: { showSaved: () => Promise<void> }) {
-  const [prefs, setPrefs] = useState({
-    dark_mode: false,
-    language: "fr",
-    auto_backup: true,
-    compression: false,
-    confirm_delete: true,
-    show_hidden_files: false,
-    grid_view: false,
-  });
+function PreferencesSection({ showSaved, saving, setSaving }: { showSaved: (fn?: () => Promise<void>) => Promise<void>, saving: boolean, setSaving: (v: boolean) => void }) {
+  const { 
+    dark_mode, language, auto_backup, compression, confirm_delete, show_hidden_files, grid_view,
+    toggleDarkMode, setLanguage, toggleAutoBackup, toggleCompression, toggleConfirmDelete, toggleShowHiddenFiles, toggleGridView
+  } = useSettingsStore();
+
+  const prefs = {
+    dark_mode, language, auto_backup, compression, confirm_delete, show_hidden_files, grid_view
+  };
 
   const toggle = (key: keyof typeof prefs) => {
-    setPrefs((s) => ({ ...s, [key]: !s[key] }));
+    switch (key) {
+      case "dark_mode": return toggleDarkMode();
+      case "grid_view": return toggleGridView();
+      case "show_hidden_files": return toggleShowHiddenFiles();
+      case "auto_backup": return toggleAutoBackup();
+      case "compression": return toggleCompression();
+      case "confirm_delete": return toggleConfirmDelete();
+    }
+  };
+
+  const savePrefs = async () => {
+    const { error } = await supabase.from("notification_preferences").upsert(
+      { user_id: (await supabase.auth.getUser()).data.user?.id, ...prefs },
+      { onConflict: "user_id" }
+    );
+    if (error) throw error;
   };
 
   return (
     <div className="space-y-6">
+      <button
+        data-save-handler="preferences"
+        onClick={() => showSaved(savePrefs)}
+        className="hidden"
+      />
+
       <div>
         <h3 className="text-sm font-bold text-dark mb-4">Affichage</h3>
         <div className="space-y-1 max-w-md">
           {[
-            { key: "dark_mode" as const, label: "Mode sombre", icon: Moon },
+            { key: "dark_mode" as const, label: "Mode sombre", icon: Moon, desc: "Basculer entre le thème clair et sombre" },
             { key: "grid_view" as const, label: "Vue en grille par défaut", desc: "Afficher les fichiers en grille plutôt qu'en liste" },
-            { key: "show_hidden_files" as const, label: "Afficher les fichiers cachés" },
           ].map((item) => {
             const Icon = item.icon || Globe;
             return (
@@ -577,21 +780,34 @@ function PreferencesSection({ showSaved }: { showSaved: () => Promise<void> }) {
               </div>
             );
           })}
+          <div className="flex items-center justify-between rounded-xl border border-[#EAE5E0] bg-[#FAF9F7] p-4 opacity-40">
+            <div className="flex items-center gap-3">
+              <Eye size={18} className="text-[#69708A]" />
+              <div>
+                <p className="text-[13px] font-semibold text-dark">Afficher les fichiers cachés</p>
+                <p className="text-[12px] text-[#9CA3AF]">Bientôt disponible</p>
+              </div>
+            </div>
+            <div className="relative h-7 w-12 rounded-full bg-[#EAE5E0] cursor-not-allowed">
+              <div className="h-5 w-5 rounded-full bg-white shadow-sm absolute top-1 left-1" />
+            </div>
+          </div>
         </div>
       </div>
 
       <div className="border-t border-[#F0ECE6] pt-6">
         <h3 className="text-sm font-bold text-dark mb-4">Langue</h3>
-        <div className="flex items-center gap-3 max-w-md">
+        <div className="flex items-center gap-3 max-w-md opacity-40">
           <Globe size={18} className="text-[#69708A]" />
           <select
-            value={prefs.language}
-            onChange={(e) => setPrefs({ ...prefs, language: e.target.value })}
-            className="flex-1 rounded-lg border border-[#EAE5E0] bg-white px-3.5 py-2.5 text-[14px] outline-none focus:border-primary/40 focus:ring-1 focus:ring-primary/20 transition-colors"
+            value={language}
+            disabled
+            className="flex-1 rounded-lg border border-[#EAE5E0] bg-white px-3.5 py-2.5 text-[14px] outline-none transition-colors cursor-not-allowed"
           >
             <option value="fr">Français</option>
             <option value="en">English</option>
           </select>
+          <span className="text-[11px] font-semibold text-[#9CA3AF]">Bientôt</span>
         </div>
       </div>
 
@@ -623,20 +839,71 @@ function PreferencesSection({ showSaved }: { showSaved: () => Promise<void> }) {
 }
 
 function DevicesSection() {
+  const [sessions, setSessions] = useState<{ id: string; device: string; os: string; lastSeen: string; current: boolean }[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchSessions = async () => {
+    try {
+      const res = await fetch("/api/auth/sessions");
+      if (res.ok) {
+        const data = await res.json();
+        setSessions(data.sessions ?? []);
+      }
+    } catch {
+      // silent
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchSessions(); }, []);
+
+  const handleRevoke = async (sessionId: string) => {
+    try {
+      await fetch("/api/auth/sessions", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId }),
+      });
+      fetchSessions();
+    } catch {
+      // silent
+    }
+  };
+
+  const revokeSupported = false;
+
+  if (loading) {
+    return (
+      <div className="space-y-3 max-w-md animate-pulse">
+        {[1, 2].map((i) => (
+          <div key={i} className="h-20 rounded-xl bg-[#F0ECE6]" />
+        ))}
+      </div>
+    );
+  }
+
+  if (sessions.length === 0) {
+    return (
+      <div className="space-y-3 max-w-md">
+        <div className="rounded-xl border border-[#EAE5E0] bg-[#FAF9F7] p-6 text-center">
+          <Smartphone size={24} className="mx-auto text-[#9CA3AF] mb-2" />
+          <p className="text-[13px] text-[#69708A]">Aucune session active trouvée.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="space-y-3 max-w-md">
-        {[
-          { name: "iPhone 15 Pro", type: "Smartphone", os: "iOS 18.2", lastSeen: "Il y a 2 heures", current: true },
-          { name: "MacBook Air M3", type: "Ordinateur", os: "macOS Sequoia", lastSeen: "Il y a 1 jour", current: false },
-          { name: "Samsung Galaxy S24", type: "Smartphone", os: "Android 14", lastSeen: "Il y a 3 jours", current: false },
-        ].map((device) => (
-          <div key={device.name} className="flex items-center justify-between rounded-xl border border-[#EAE5E0] bg-[#FAF9F7] p-4">
+        {sessions.map((device) => (
+          <div key={device.id} className="flex items-center justify-between rounded-xl border border-[#EAE5E0] bg-[#FAF9F7] p-4">
             <div className="flex items-center gap-3">
               <Smartphone size={20} className="text-[#69708A]" />
               <div>
                 <div className="flex items-center gap-2">
-                  <p className="text-[13px] font-semibold text-dark">{device.name}</p>
+                  <p className="text-[13px] font-semibold text-dark">{device.device}</p>
                   {device.current && (
                     <span className="text-[10px] font-bold text-white bg-primary px-1.5 py-0.5 rounded-full">Actuel</span>
                   )}
@@ -644,8 +911,11 @@ function DevicesSection() {
                 <p className="text-[12px] text-[#9CA3AF]">{device.os} · Dernière activité : {device.lastSeen}</p>
               </div>
             </div>
-            {!device.current && (
-              <button className="text-[12px] font-semibold text-red-500 hover:text-red-600 hover:underline shrink-0">
+            {!device.current && revokeSupported && (
+              <button
+                onClick={() => handleRevoke(device.id)}
+                className="text-[12px] font-semibold text-red-500 hover:text-red-600 hover:underline shrink-0"
+              >
                 Déconnecter
               </button>
             )}

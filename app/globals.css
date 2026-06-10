@@ -14,6 +14,17 @@
     --border: #E5E7EB;
   }
 
+  .dark {
+    color-scheme: dark;
+    --background: #0F0F0F;
+    --foreground: #F5F5F5;
+    --primary: #FF6300;
+    --primary-light: #FF8A20;
+    --surface: #1A1A1A;
+    --surface-card: rgba(26, 26, 26, 0.95);
+    --border: #2A2A2A;
+  }
+
   * {
     scroll-behavior: smooth;
   }
@@ -26,9 +37,19 @@
     -moz-osx-font-smoothing: grayscale;
   }
 
+  .dark body,
+  body.dark {
+    color: #F5F5F5;
+    background: #0F0F0F;
+  }
+
   ::selection {
     background: rgba(255, 99, 0, 0.2);
     color: #121212;
+  }
+
+  .dark ::selection {
+    color: #F5F5F5;
   }
 }
 
@@ -85,6 +106,17 @@
 }
 
 @layer utilities {
+  .font-readex {
+    font-family: 'Readex Pro', var(--font-readex), sans-serif;
+  }
+
+  .hero-title {
+    font-family: 'Jost', sans-serif;
+    font-weight: 700;
+    letter-spacing: -0.05em;
+    line-height: 0.9;
+  }
+
   .text-balance {
     text-wrap: balance;
   }
@@ -137,4 +169,17 @@
   50% {
     opacity: 0.5;
   }
+}
+
+@keyframes marquee {
+  0% {
+    transform: translateX(100%);
+  }
+  100% {
+    transform: translateX(-100%);
+  }
+}
+
+.animate-marquee {
+  animation: marquee 15s linear infinite;
 }

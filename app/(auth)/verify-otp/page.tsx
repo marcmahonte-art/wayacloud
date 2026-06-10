@@ -33,7 +33,7 @@ export default function VerifyOtpPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
-    setMessage("✅ Vérification réussie !")
+    setMessage("Vérification réussie !")
     setLoading(false)
   }
 
@@ -76,7 +76,7 @@ export default function VerifyOtpPage() {
           </div>
 
           {message && (
-            <p className={cn("text-sm text-center", message.includes("✅") ? "text-green-600" : "text-primary")}>
+            <p className={cn("text-sm text-center text-green-600")}>
               {message}
             </p>
           )}

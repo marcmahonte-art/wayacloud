@@ -1,17 +1,20 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 const checkSchema = z.object({
   md5: z.string().regex(/^[a-f0-9]{32}$/),
 });
 
 export async function POST(request: Request) {
-  const supabase = createAdminSupabaseClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const serverSupabase = await createServerSupabaseClient();
+  const { data: { user } } = await serverSupabase.auth.getUser();
   if (!user) {
     return NextResponse.json({ message: "Authentification requise." }, { status: 401 });
   }
+
+  const supabase = createAdminSupabaseClient();
 
   const body = checkSchema.safeParse(await request.json());
   if (!body.success) {

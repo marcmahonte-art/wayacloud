@@ -1,13 +1,13 @@
 "use client"
 
-import { Cloud, Mail, MapPin, Phone } from "lucide-react"
+import { Mail, MapPin, Phone } from "lucide-react"
+import { Logo } from "@/components/ui/Logo"
 
 const footerLinks = {
   produit: [
-    { label: "Fonctionnalités", href: "#features" },
-    { label: "Tarifs", href: "#pricing" },
-    { label: "Sécurité", href: "#" },
-    { label: "API", href: "#" },
+    { label: "Accueil", href: "/" },
+    { label: "Fonctionnalités", href: "/features" },
+    { label: "Tarifs", href: "/pricing" },
   ],
   entreprise: [
     { label: "À propos", href: "#" },
@@ -32,16 +32,11 @@ const footerLinks = {
 export function Footer() {
   return (
     <footer className="relative border-t border-border bg-white">
-      <div className="mx-auto max-w-7xl px-6 lg:px-8 py-16">
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-8">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-6 sm:gap-8">
           <div className="col-span-2">
-            <a href="/" className="flex items-center gap-2 mb-4">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-primary-light">
-                <Cloud className="h-4 w-4 text-white" />
-              </div>
-              <span className="text-base font-bold text-dark">
-                Waya<span className="text-primary">Cloud</span>
-              </span>
+            <a href="/" className="flex items-center mb-4">
+              <Logo className="w-[140px] text-[#111827]" />
             </a>
             <p className="text-sm text-gray max-w-xs mb-6">
               Le cloud souverain africain avec intelligence artificielle intégrée. Stockez, organisez et partagez vos fichiers en toute sécurité.

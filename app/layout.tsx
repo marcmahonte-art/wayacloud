@@ -1,10 +1,16 @@
 import type { Metadata } from "next";
-import { Jost } from "next/font/google";
+import { Jost, Readex_Pro } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 
 const jost = Jost({
   subsets: ["latin"],
   variable: "--font-jost",
+});
+
+const readexPro = Readex_Pro({
+  subsets: ["latin"],
+  variable: "--font-readex",
 });
 import { Providers } from "./providers";
 
@@ -22,7 +28,18 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fr">
-      <body className={`${jost.variable} bg-background font-jost text-dark antialiased`}>
+      <head>
+        <link rel="preload" href="/logo-light.svg" as="image" />
+        <link rel="preload" href="/logo-dark.svg" as="image" />
+        <Script
+          id="microsoft-clarity"
+          strategy="afterInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `(function(c,l,a,r,i,t,y){c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);})(window,document,"clarity","script","x2dcnmt9g6");`,
+          }}
+        />
+      </head>
+      <body className={`${jost.variable} ${readexPro.variable} bg-background font-jost text-dark antialiased`}>
         <Providers>{children}</Providers>
       </body>
     </html>

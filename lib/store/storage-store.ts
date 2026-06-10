@@ -1,4 +1,5 @@
 "use client";
+import { createClient } from "@/lib/supabase/client";
 
 import { create } from "zustand";
 import { subscribeWithSelector } from "zustand/middleware";
@@ -50,6 +51,7 @@ interface StorageActions {
   removeFile: (id: string) => void;
   setQuota: (quota: { used_bytes?: number; limit_bytes?: number; storage_used_bytes?: number; storage_limit_bytes?: number }) => void;
   recalcQuota: () => void;
+  refreshQuota: () => Promise<void>;
   addActivity: (activity: ActivityEntry) => void;
   refreshAll: () => Promise<void>;
 }
@@ -114,26 +116,40 @@ export const useStorageStore = create<StorageState & StorageActions>()(
     },
 
     removeFile: (id: string) => {
-      set((state: StorageState) => ({
-        files: state.files.filter((f: FileEntry) => f.id !== id),
-        trashedFiles: state.trashedFiles.filter((f: FileEntry) => f.id !== id),
-      }));
-    },
+        set((state: StorageState) => ({
+          files: state.files.filter((f: FileEntry) => f.id !== id),
+          trashedFiles: state.trashedFiles.filter((f: FileEntry) => f.id !== id),
+        }));
+        // Rafraîchir le quota après suppression
+        get().refreshQuota();
+      },
 
     setQuota: (q) => {
-      set({
-        quota: {
-          storage_used_bytes: q.used_bytes ?? q.storage_used_bytes ?? 0,
-          storage_limit_bytes: q.limit_bytes ?? q.storage_limit_bytes ?? 5_368_709_120,
-        },
-      });
-    },
+        set({
+          quota: {
+            storage_used_bytes: q.used_bytes ?? q.storage_used_bytes ?? 0,
+            storage_limit_bytes: q.limit_bytes ?? q.storage_limit_bytes ?? 5_368_709_120,
+          },
+        });
+      },
 
     recalcQuota: () => {
       const { files, quota } = get();
       const used = computeUsedBytes(files);
       if (quota.storage_used_bytes !== used) {
         set({ quota: { ...quota, storage_used_bytes: used } });
+      }
+    },
+
+    refreshQuota: async () => {
+      try {
+        const res = await fetch("/api/storage_quotas");
+        if (!res.ok) throw new Error("Failed to fetch quota");
+        const { used, limit } = await res.json();
+        // Update store quota using expected fields
+        get().setQuota({ used_bytes: used, limit_bytes: limit });
+      } catch (e) {
+        console.error("Erreur lors du rafraîchissement du quota", e);
       }
     },
 
@@ -190,3 +206,26 @@ useStorageStore.subscribe(
   (state: StorageState) => state.files,
   () => { useStorageStore.getState().recalcQuota(); },
 );
+
+// Supabase realtime subscription pour updates de stockage
+const supabase = createClient();
+
+supabase
+  .channel("public:files")
+  .on(
+    "postgres_changes",
+    { event: "INSERT", schema: "public", table: "files" },
+    (payload) => {
+      // Un nouveau fichier a été ajouté, rafraîchir le quota
+      useStorageStore.getState().refreshQuota();
+    },
+  )
+  .on(
+    "postgres_changes",
+    { event: "DELETE", schema: "public", table: "files" },
+    (payload) => {
+      // Un fichier a été supprimé, rafraîchir le quota
+      useStorageStore.getState().refreshQuota();
+    },
+  )
+  .subscribe();

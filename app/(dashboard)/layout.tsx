@@ -5,6 +5,7 @@ import {
   Album,
   Bell,
   CircleHelp,
+  CreditCard,
   FileText,
   Folder,
   Gift,
@@ -25,12 +26,13 @@ import {
   LogOut,
   ChevronRight,
   Loader2,
+  Shield,
 } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { UploadButton } from "@/components/dashboard/UploadButton";
 import { useAuth } from "@/providers/AuthProvider";
+import { Logo } from "@/components/ui/Logo";
 import { ErrorBoundary } from "@/components/error/ErrorBoundary";
 import { useStorageStore } from "@/lib/store/storage-store";
 import { useStorageSync } from "@/lib/store/useStorageSync";
@@ -100,7 +102,9 @@ export default function DashboardLayout({
 
   const [searchValue, setSearchValue] = useState("");
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
+  const userMenuRef = useRef<HTMLDivElement>(null);
 
   const isActive = (href: string) => pathname === href || (href === "/dashboard" && pathname === "/");
 
@@ -124,18 +128,25 @@ export default function DashboardLayout({
       if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
         setShowNotifications(false)
       }
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setShowUserMenu(false)
+      }
     }
-    if (showNotifications) {
+    if (showNotifications || showUserMenu) {
       document.addEventListener("mousedown", handleClickOutside)
     }
     return () => document.removeEventListener("mousedown", handleClickOutside)
-  }, [showNotifications])
+  }, [showNotifications, showUserMenu])
 
   const notifIcon = (type: string) => {
     switch (type) {
       case "upload": return Upload
       case "delete": return Trash2
       case "restore": return RefreshCw
+      case "share": return Share2
+      case "signup": return UserPlus
+      case "payment": return CreditCard
+      case "login": return UserPlus
       default: return Activity
     }
   }
@@ -145,22 +156,19 @@ export default function DashboardLayout({
       case "upload": return "bg-green-100 text-green-700"
       case "delete": return "bg-red-100 text-red-600"
       case "restore": return "bg-blue-100 text-blue-600"
+      case "share": return "bg-purple-100 text-purple-600"
+      case "signup": return "bg-emerald-100 text-emerald-700"
+      case "payment": return "bg-amber-100 text-amber-700"
+      case "login": return "bg-teal-100 text-teal-700"
       default: return "bg-slate-100 text-slate-600"
     }
   }
 
   const sidebar = (
     <div className="flex h-full flex-col">
-      <Link href="/dashboard" className="block shrink-0">
-        <Image
-          src="/assets/waya-logo.png"
-          alt="WayaCloud"
-          width={210}
-          height={64}
-          priority
-          className="h-auto w-[170px]"
-        />
-      </Link>
+        <Link href="/dashboard" className="shrink-0">
+          <Logo className="w-[170px] text-[#111827]" />
+        </Link>
 
       <nav className="mt-7 flex-1 space-y-1 overflow-y-auto">
         {navigation.map((item) => {
@@ -204,17 +212,17 @@ export default function DashboardLayout({
               <div className="min-w-0">
                 <p className="text-[14px] font-bold text-[#4B18C9] leading-tight">
                   {subscription?.plan_name === "Gratuit" || !subscription?.plan_price
-                    ? "Passez au plan Essentiel 20 Go"
+                    ? "Passez au plan Sauve WhatsApp 20 Go"
                     : subscription?.plan_name === "Essentiel"
-                    ? "Passez au plan Famille 100 Go"
-                    : "Passez au plan Business 500 Go"}
+                    ? "Passez au plan Famille 50 Go"
+                    : "Passez au plan Pro Village 100 Go"}
                 </p>
                 <p className="mt-1.5 text-[12px] leading-5 text-[#596077]">
                   {subscription?.plan_name === "Gratuit" || !subscription?.plan_price
-                    ? "Stockez vos premiers fichiers en toute sécurité."
+                    ? "Backup WhatsApp automatique à 125 F/mois."
                     : subscription?.plan_name === "Essentiel"
-                    ? "Parfait pour toute la famille."
-                    : "Pour les professionnels et entreprises."}
+                    ? "50 Go pour toute la famille, 333 F/mois."
+                    : "100 Go avec chiffrement total, 583 F/mois."}
                 </p>
               </div>
               <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-btn bg-white shadow-sm">
@@ -276,15 +284,7 @@ export default function DashboardLayout({
         }`}
       >
         <div className="flex h-full flex-col p-5">
-          <div className="flex items-center justify-between mb-5">
-            <Image
-              src="/assets/waya-logo.png"
-              alt="WayaCloud"
-              width={160}
-              height={48}
-              priority
-              className="h-auto w-[140px]"
-            />
+          <div className="flex items-center justify-end mb-2">
             <button
               onClick={() => setMobileMenuOpen(false)}
               className="flex h-11 w-11 items-center justify-center rounded-lg text-[#69708A] hover:bg-[#F5F3F0] transition-colors"
@@ -317,7 +317,14 @@ export default function DashboardLayout({
               </div>
             </div>
 
-            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="flex items-center gap-1.5 sm:gap-3">
+              <button
+                  onClick={() => router.push("/mes-fichiers?q=")}
+                  className="flex sm:hidden h-11 w-11 shrink-0 items-center justify-center rounded-lg text-[#69708A] hover:bg-[#F5F3F0] transition-colors"
+                  aria-label="Rechercher"
+                >
+                  <Search size={20} />
+                </button>
               <form onSubmit={handleSearch} className="hidden sm:flex h-10 min-w-0 max-w-[320px] flex-1 items-center gap-2.5 rounded-card border border-[#E3DFE8] bg-white px-3.5 shadow-sm">
                 <Search size={17} className="text-[#516080] shrink-0" />
                 <input
@@ -395,6 +402,33 @@ export default function DashboardLayout({
                 <CircleHelp size={18} />
               </Link>
               <UploadButton />
+
+              <div className="relative" ref={userMenuRef}>
+                <button onClick={() => setShowUserMenu(p => !p)} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#FFE8D9] text-sm font-bold text-primary border-2 border-transparent hover:border-primary/30 transition-all" title={displayName}>
+                  {initials}
+                </button>
+                {showUserMenu && (
+                  <div className="absolute right-0 top-full mt-2 z-50 w-[220px] rounded-xl border border-[#ECE7DF] bg-white shadow-lg overflow-hidden">
+                    <div className="px-4 py-3 border-b border-[#ECE7DF]">
+                      <p className="text-[13px] font-bold text-dark truncate">{displayName}</p>
+                      <p className="text-[11px] text-[#69708A] truncate">{userEmail}</p>
+                    </div>
+                    <div className="p-1">
+                      {profile?.role === "admin" || profile?.role === "super_admin" ? (
+                        <Link href="/admin" onClick={() => setShowUserMenu(false)} className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-semibold text-primary hover:bg-primary/5 transition-colors">
+                          <Shield size={16} /> Administration
+                        </Link>
+                      ) : null}
+                      <Link href="/parametres" onClick={() => setShowUserMenu(false)} className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium text-[#69708A] hover:bg-[#F5F3F0] hover:text-dark transition-colors">
+                        <Settings size={16} /> Paramètres
+                      </Link>
+                      <button onClick={() => { setShowUserMenu(false); logout(); router.push("/login"); }} className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium text-red-500 hover:bg-red-50 transition-colors">
+                        <LogOut size={16} /> Déconnexion
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </header>
@@ -404,19 +438,25 @@ export default function DashboardLayout({
         </main>
 
         {/* Mobile bottom navigation */}
-        <nav className="fixed bottom-0 left-0 right-0 z-30 flex items-center justify-around border-t border-[#ECE7DF] bg-white/95 backdrop-blur px-2 py-2 lg:hidden">
-          {navigation.map((item) => {
+        <nav className="fixed bottom-0 left-0 right-0 z-30 flex items-center justify-around border-t border-[#ECE7DF] bg-white/95 backdrop-blur px-1 py-1 pb-safe lg:hidden">
+          {[
+            { href: "/dashboard", label: "Accueil", icon: Home },
+            { href: "/mes-fichiers", label: "Fichiers", icon: Folder },
+            { href: "/whatsapp", label: "WhatsApp", icon: MessageCircle },
+            { href: "/partages", label: "Partages", icon: Share2 },
+            { href: "/parametres", label: "Compte", icon: Settings },
+          ].map((item) => {
             const active = isActive(item.href);
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex flex-col items-center gap-0.5 rounded-lg px-2 py-2 transition-colors min-w-0 ${
-                  active ? "text-primary" : "text-[#69708A] hover:text-dark"
+                className={`flex flex-col items-center gap-0.5 rounded-xl px-1 py-1.5 transition-colors min-w-0 flex-1 ${
+                  active ? "text-primary bg-primary/5" : "text-[#69708A] hover:text-dark"
                 }`}
               >
-                <item.icon size={22} strokeWidth={active ? 2.2 : 1.8} />
-                <span className="text-[11px] font-semibold leading-tight text-center">{item.label.split(" ")[0]}</span>
+                <item.icon size={24} strokeWidth={active ? 2.5 : 1.8} />
+                <span className="text-[10px] font-semibold leading-tight text-center truncate w-full">{item.label}</span>
               </Link>
             );
           })}

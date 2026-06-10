@@ -35,7 +35,7 @@ import {
   Zap,
   Target,
 } from "lucide-react";
-import { formatAmountFcfa, formatStorageGo } from "@/lib/formatters";
+import { formatAmountFcfa, formatStorageGo, formatBytes } from "@/lib/formatters";
 import Link from "next/link";
 import { WhatsAppBackupCard } from "@/components/dashboard/WhatsAppBackupCard";
 import { StorageQuotaBar } from "@/components/dashboard/StorageQuotaBar";
@@ -161,6 +161,7 @@ export default function DashboardPage() {
   const router = useRouter();
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [shareUrl, setShareUrl] = useState("");
+  const [newFolderModalOpen, setNewFolderModalOpen] = useState(false);
   const { user, subscription, remainingTrialDays, profileLoading } = useAuth();
   const [isUploading, setIsUploading] = useState(false);
   const [toast, setToast] = useState<{ show: boolean; message: string; type: "success" | "info" | "error" }>({ show: false, message: "", type: "success" });
@@ -284,10 +285,7 @@ export default function DashboardPage() {
     } else if (label === "Sauvegarder WhatsApp") {
       router.push("/whatsapp?scan=1");
     } else if (label === "Nouveau dossier") {
-      const folderName = prompt("Entrez le nom du nouveau dossier :");
-      if (folderName) {
-        showToast(`Fonctionnalité de création de dossier bientôt disponible`);
-      }
+      setNewFolderModalOpen(true);
     } else if (label === "Partager un lien") {
       const url = window.location.origin + "/partages";
       setShareUrl(url);
@@ -350,7 +348,7 @@ export default function DashboardPage() {
                   </p>
                 )}
                 <p className="mt-3 text-sm text-[#596077]">
-                  {formatStorageGo(Number((storeQuota.storage_limit_bytes / (1024 * 1024 * 1024)).toFixed(1)))} Go · {planPrice}
+                  {formatBytes(storeQuota.storage_limit_bytes)} · {planPrice}
                 </p>
                 {renewalDate && (
                   <>
@@ -405,7 +403,7 @@ export default function DashboardPage() {
           </div>
         </section>
         {shareModalOpen && (
-          <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+          <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50">
             <div className="bg-white rounded-lg p-6 shadow-lg max-w-sm w-full">
               <h3 className="text-lg font-bold mb-4">Partager le lien</h3>
               <div className="flex flex-col space-y-3">
@@ -444,7 +442,7 @@ export default function DashboardPage() {
                     setShareModalOpen(false);
                   }}
                 >
-                  📋 Copier le lien
+                  Copier le lien
                 </button>
                 <button
                   className="mt-2 text-sm text-gray-500 underline"
@@ -457,8 +455,59 @@ export default function DashboardPage() {
           </div>
         )}
 
+        {newFolderModalOpen && (
+          <div className="fixed inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-50 p-4" onClick={() => setNewFolderModalOpen(false)}>
+            <div className="bg-white rounded-2xl border border-[#eae5e0] shadow-[0_20px_60px_rgba(0,0,0,0.15)] max-w-sm w-full" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center justify-between px-6 pt-5 pb-3">
+                <h3 className="text-[17px] font-bold text-dark">Nouveau dossier</h3>
+                <button onClick={() => setNewFolderModalOpen(false)} className="flex h-8 w-8 items-center justify-center rounded-lg text-[#69708a] hover:bg-black/5 transition-colors">
+                  <X size={18} />
+                </button>
+              </div>
+              <div className="px-6 pb-6">
+                <p className="text-sm text-[#596077] mb-4">
+                  Créez des dossiers pour organiser vos fichiers et partages.
+                </p>
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-[12px] font-semibold text-[#69708a] mb-1.5 block">Nom du dossier</label>
+                    <input
+                      autoFocus
+                      placeholder="Ex: Photos de vacances"
+                      className="w-full rounded-xl border border-[#e3dfe8] bg-white px-4 py-3 text-[14px] outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/10 transition-colors"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          setNewFolderModalOpen(false);
+                          showToast("Fonctionnalité de création de dossier bientôt disponible");
+                        }
+                      }}
+                    />
+                  </div>
+                  <div className="flex items-center justify-end gap-2">
+                    <button
+                      onClick={() => setNewFolderModalOpen(false)}
+                      className="rounded-xl border border-[#e3dfe8] bg-white px-5 py-2.5 text-[13px] font-semibold text-[#4a4a4a] hover:bg-[#f5f3f0] transition-colors"
+                    >
+                      Annuler
+                    </button>
+                    <button
+                      onClick={() => {
+                        setNewFolderModalOpen(false);
+                        showToast("Fonctionnalité de création de dossier bientôt disponible");
+                      }}
+                      className="rounded-xl bg-primary px-5 py-2.5 text-[13px] font-bold text-white hover:bg-primary-light transition-colors"
+                    >
+                      Créer
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         <section className="rounded-card border border-[#ECE7DF] bg-white p-5 shadow-card">
-          <h2 className="text-lg font-bold text-dark">Outils intelligents ✨</h2>
+          <h2 className="text-lg font-bold text-dark">Outils intelligents</h2>
           <div className="mt-4 grid min-w-0 gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {tools.map((tool) => {
               const Content = (

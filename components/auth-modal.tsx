@@ -4,6 +4,7 @@ import { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Check, Loader2, Shield } from "lucide-react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import {
   Dialog,
   DialogContent,
@@ -50,7 +51,7 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
   const handleOtpSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setOtpLoading(true)
-    setMessage("✅ Connexion réussie !")
+    setMessage("Connexion réussie !")
     setOtpLoading(false)
     setTimeout(() => {
       onOpenChange(false)
@@ -100,9 +101,9 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
 
                   <p className="text-xs text-helper text-center mt-6">
                     En continuant, vous acceptez nos{" "}
-                    <a href="#" className="text-primary hover:underline">
+                    <Link href="/cgu" className="text-primary hover:underline" onClick={() => onOpenChange(false)}>
                       conditions d&apos;utilisation
-                    </a>
+                    </Link>
                   </p>
                 </motion.div>
               ) : (
@@ -143,7 +144,7 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
                     </div>
 
                     {message && (
-                      <p className={cn("text-sm text-center", message.includes("✅") ? "text-green-600" : "text-primary")}>
+                      <p className={cn("text-sm text-center text-green-600")}>
                         {message}
                       </p>
                     )}

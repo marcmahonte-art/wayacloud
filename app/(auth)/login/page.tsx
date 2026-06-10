@@ -9,6 +9,7 @@ import { LoginForm } from "@/components/auth/LoginForm"
 import { AuthSeparator } from "@/components/auth/AuthSeparator"
 import { SocialAuth } from "@/components/auth/SocialAuth"
 import { useAuth } from "@/providers/AuthProvider"
+import Link from "next/link"
 
 
 
@@ -53,7 +54,7 @@ export default function LoginPage() {
     e.preventDefault()
     setOtpLoading(true)
     await new Promise((r) => setTimeout(r, 500))
-    setMessage("✅ Connexion réussie !")
+    setMessage("Connexion réussie !")
     setOtpLoading(false)
     setTimeout(() => router.push("/dashboard"), 1000)
   }
@@ -104,9 +105,9 @@ export default function LoginPage() {
 
               <p className="text-xs text-helper text-center mt-6">
                 En continuant, vous acceptez nos{" "}
-                <a href="#" className="text-primary hover:underline">
+                <Link href="/cgu" className="text-primary hover:underline">
                   conditions d&apos;utilisation
-                </a>
+                </Link>
               </p>
             </motion.div>
           ) : (
@@ -152,7 +153,7 @@ export default function LoginPage() {
                 </div>
 
                 {message && (
-                  <p className={cn("text-sm text-center", message.includes("✅") ? "text-green-600" : "text-primary")}>
+                  <p className={cn("text-sm text-center text-green-600")}>
                     {message}
                   </p>
                 )}

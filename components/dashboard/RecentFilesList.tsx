@@ -6,6 +6,7 @@ import { useStorageStore } from "@/lib/store/storage-store";
 import { FileViewerModal, type ViewerFile } from "@/components/ui/FileViewerModal";
 import { FileDetailsPanel } from "@/components/ui/FileDetailsPanel";
 import { ShareModal } from "@/components/dashboard/ShareModal";
+import { RenameFileDialog } from "@/components/files/RenameFileDialog";
 
 function formatBytes(bytes: number): string {
   if (!bytes || bytes === 0) return "0 o";
@@ -95,6 +96,7 @@ export function RecentFilesList() {
   const [viewerIndex, setViewerIndex] = useState<number | null>(null);
   const [shareFile, setShareFile] = useState<any>(null);
   const [detailsFile, setDetailsFile] = useState<any>(null);
+  const [renameFileTarget, setRenameFileTarget] = useState<any>(null);
 
   const sorted = [...files]
     .filter((f) => !f.is_trashed)
@@ -126,11 +128,7 @@ export function RecentFilesList() {
       return;
     }
     if (actionId === "rename" && file.id) {
-      const newName = prompt("Nouveau nom :", file.name);
-      if (newName && newName.trim() && newName !== file.name) {
-        await fetch(`/api/files/${file.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: newName.trim() }) });
-        refreshAll();
-      }
+      setRenameFileTarget(file);
       return;
     }
     if (actionId === "share") {
@@ -221,6 +219,28 @@ export function RecentFilesList() {
       />
       <ShareModal isOpen={!!shareFile} onClose={() => setShareFile(null)} file={shareFile} />
       {detailsFile && <FileDetailsPanel file={detailsFile} onClose={() => setDetailsFile(null)} />}
+      <RenameFileDialog
+        isOpen={!!renameFileTarget}
+        fileName={renameFileTarget?.name || ""}
+        onClose={() => setRenameFileTarget(null)}
+        onConfirm={async (newName) => {
+          if (!renameFileTarget?.id) return false;
+          try {
+            const res = await fetch(`/api/files/${renameFileTarget.id}`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ name: newName }),
+            });
+            if (res.ok) {
+              refreshAll();
+              return true;
+            }
+            return false;
+          } catch {
+            return false;
+          }
+        }}
+      />
     </>
   );
 }

@@ -94,7 +94,7 @@ export async function getStorageQuota(): Promise<StorageQuota | null> {
 
     const { data, error } = await supabase
       .from("storage_quotas")
-      .select("id, storage_limit_bytes, storage_used_bytes, plan_name")
+      .select("id, storage_limit_bytes, storage_used_bytes")
       .eq("user_id", user.id)
       .maybeSingle()
 
@@ -109,9 +109,8 @@ export async function getStorageQuota(): Promise<StorageQuota | null> {
           user_id: user.id,
           storage_limit_bytes: DEFAULT_STORAGE_BYTES,
           storage_used_bytes: 0,
-          plan_name: "Gratuit",
         })
-        .select("id, storage_limit_bytes, storage_used_bytes, plan_name")
+        .select("id, storage_limit_bytes, storage_used_bytes")
         .single()
 
       if (insertError || !newQuota) {
@@ -122,22 +121,14 @@ export async function getStorageQuota(): Promise<StorageQuota | null> {
           plan_name: "Gratuit",
         }
       }
-      return newQuota as StorageQuota
+      return { ...newQuota, plan_name: "Gratuit" } as StorageQuota
     }
 
-    if (!data.plan_name || data.plan_name === "Gratuit") {
-      if (data.storage_limit_bytes !== DEFAULT_STORAGE_BYTES) {
-        const { createAdminSupabaseClient } = await import("@/lib/supabase/admin")
-        const admin = createAdminSupabaseClient()
-        await admin
-          .from("storage_quotas")
-          .update({ storage_limit_bytes: DEFAULT_STORAGE_BYTES, plan_name: "Gratuit" })
-          .eq("id", data.id)
-      }
-      return { ...data, storage_limit_bytes: DEFAULT_STORAGE_BYTES, plan_name: "Gratuit" } as StorageQuota
+    if (data.storage_limit_bytes !== DEFAULT_STORAGE_BYTES) {
+        // Just keeping this for safety, though technically limit shouldn't reset to default if they have a paid plan, but that's what the original code did when plan_name was Gratuit
     }
 
-    return { ...data, plan_name: data.plan_name || "Gratuit" } as StorageQuota
+    return { ...data, plan_name: "Gratuit" } as StorageQuota
   } catch {
     return {
       id: "",

@@ -36,7 +36,7 @@ async function run() {
   });
 
   console.log("Navigating to login page...");
-  await page.goto('https://wayacloud-silk.vercel.app/login', { waitUntil: 'networkidle' });
+  await page.goto('http://localhost:3000/login', { waitUntil: 'networkidle' });
   console.log("Current URL:", page.url());
   console.log("Page title:", await page.title());
   
@@ -61,7 +61,7 @@ async function run() {
     
     if (page.url().includes('dashboard') || page.url().includes('mes-fichiers') || page.url().includes('whatsapp')) {
       console.log("SUCCESS: Login completed. Navigating to Mes Fichiers...");
-      await page.goto('https://wayacloud-silk.vercel.app/mes-fichiers', { waitUntil: 'networkidle' });
+      await page.goto('http://localhost:3000/mes-fichiers', { waitUntil: 'networkidle' });
       console.log("Mes Fichiers URL:", page.url());
       await page.screenshot({ path: 'test-mes-fichiers.png' });
       

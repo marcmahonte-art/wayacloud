@@ -124,8 +124,8 @@ export async function POST(request: Request) {
 
   if (payment.is_gift && payment.gift_recipient_phone) {
     const message = payment.gift_message
-      ? `Vous avez reçu un abonnement WayaCloud en cadeau ! 🎉 Message: "${payment.gift_message}"`
-      : "Vous avez reçu un abonnement WayaCloud en cadeau ! 🎉";
+      ? `Vous avez reçu un abonnement WayaCloud en cadeau ! Message: "${payment.gift_message}"`
+      : "Vous avez reçu un abonnement WayaCloud en cadeau !";
     console.log(`[SMS to ${payment.gift_recipient_phone}]: ${message}`);
   }
 

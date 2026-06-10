@@ -1,12 +1,15 @@
 import { NextResponse } from "next/server";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 export async function GET() {
-  const supabase = createAdminSupabaseClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const serverSupabase = await createServerSupabaseClient();
+  const { data: { user } } = await serverSupabase.auth.getUser();
   if (!user) {
     return NextResponse.json({ message: "Authentification requise." }, { status: 401 });
   }
+
+  const supabase = createAdminSupabaseClient();
 
   const [
     { data: files, error: filesError },
