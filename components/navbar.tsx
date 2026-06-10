@@ -45,76 +45,78 @@ export function Navbar({ onAuthOpen, onGetStarted }: NavbarProps) {
   }, [mobileOpen])
 
   return (
-    <header
-      className={cn(
-        "fixed left-0 right-0 top-0 z-30 flex h-[80px] items-center px-6 transition-all duration-200 sm:px-8 md:px-10",
-        isHomePage
-          ? "bg-transparent"
-          : "bg-white/90 backdrop-blur-md shadow-sm",
-      )}
-    >
-      <nav className="mx-auto flex w-full max-w-7xl items-center justify-between">
-        <Link href="/" className="flex items-center shrink-0">
-          <Logo
-            variant={isHomePage ? "light" : "dark"}
-            className={cn(
-              "w-[190px] transition-all duration-200 sm:w-[210px]",
-            )}
-          />
-        </Link>
+    <>
+      <header
+        className={cn(
+          "fixed left-0 right-0 top-0 z-30 flex h-[80px] items-center px-6 transition-all duration-200 sm:px-8 md:px-10",
+          isHomePage
+            ? "bg-transparent"
+            : "bg-white/90 backdrop-blur-md shadow-sm",
+        )}
+      >
+        <nav className="mx-auto flex w-full max-w-7xl items-center justify-between">
+          <Link href="/" className="flex items-center shrink-0">
+            <Logo
+              variant={isHomePage ? "light" : "dark"}
+              className={cn(
+                "w-[190px] transition-all duration-200 sm:w-[210px]",
+              )}
+            />
+          </Link>
 
-        <div className="hidden items-center gap-10 lg:flex">
-          {navLinks.map((link) => (
-            <Link
-              key={link.label}
-              href={link.href}
+          <div className="hidden items-center gap-10 lg:flex">
+            {navLinks.map((link) => (
+              <Link
+                key={link.label}
+                href={link.href}
+                className={cn(
+                  "text-[15px] font-jost font-medium transition-all duration-200",
+                  isHomePage
+                    ? link.href === "/"
+                      ? "text-white"
+                      : "text-white/60 hover:text-white"
+                    : link.href === pathname
+                      ? "text-[#FF6B00]"
+                      : "text-[#111827] hover:text-[#FF6B00]",
+                )}
+              >
+                {link.label}
+              </Link>
+            ))}
+            <button
+              onClick={onAuthOpen}
               className={cn(
                 "text-[15px] font-jost font-medium transition-all duration-200",
                 isHomePage
-                  ? link.href === "/"
-                    ? "text-white"
-                    : "text-white/60 hover:text-white"
-                  : link.href === pathname
-                    ? "text-[#FF6B00]"
-                    : "text-[#111827] hover:text-[#FF6B00]",
+                  ? "text-white/60 hover:text-white"
+                  : "text-[#111827] hover:text-[#FF6B00]",
               )}
             >
-              {link.label}
-            </Link>
-          ))}
+              Connexion
+            </button>
+          </div>
+
+          <div className="hidden items-center lg:flex">
+            <button
+              onClick={onGetStarted}
+              className="rounded-xl bg-[#FF6B00] px-6 py-2.5 text-[15px] font-jost font-semibold text-white transition-all duration-200 hover:bg-[#FF7A1A] shadow-[0_4px_20px_rgba(255,99,0,0.35)] whitespace-nowrap"
+            >
+              Essayer gratuitement
+            </button>
+          </div>
+
           <button
-            onClick={onAuthOpen}
             className={cn(
-              "text-[15px] font-jost font-medium transition-all duration-200",
-              isHomePage
-                ? "text-white/60 hover:text-white"
-                : "text-[#111827] hover:text-[#FF6B00]",
+              "flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-200 lg:hidden",
+              isHomePage ? "bg-white/10 hover:bg-white/20 text-white" : "bg-[#F8F7F4] hover:bg-brand-tint text-[#111827]",
             )}
+            onClick={() => setMobileOpen(!mobileOpen)}
+            aria-label="Toggle menu"
           >
-            Connexion
+            {mobileOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
-        </div>
-
-        <div className="hidden items-center lg:flex">
-          <button
-            onClick={onGetStarted}
-            className="rounded-xl bg-[#FF6B00] px-6 py-2.5 text-[15px] font-jost font-semibold text-white transition-all duration-200 hover:bg-[#FF7A1A] shadow-[0_4px_20px_rgba(255,107,0,0.35)] whitespace-nowrap"
-          >
-            Essayer gratuitement
-          </button>
-        </div>
-
-        <button
-          className={cn(
-            "flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-200 lg:hidden",
-            isHomePage ? "bg-white/10 hover:bg-white/20 text-white" : "bg-[#F8F7F4] hover:bg-brand-tint text-[#111827]",
-          )}
-          onClick={() => setMobileOpen(!mobileOpen)}
-          aria-label="Toggle menu"
-        >
-          {mobileOpen ? <X size={20} /> : <Menu size={20} />}
-        </button>
-      </nav>
+        </nav>
+      </header>
 
       <AnimatePresence>
         {mobileOpen && (
@@ -175,6 +177,6 @@ export function Navbar({ onAuthOpen, onGetStarted }: NavbarProps) {
           </>
         )}
       </AnimatePresence>
-    </header>
+    </>
   )
 }
