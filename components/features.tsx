@@ -55,7 +55,7 @@ export function Features({ onGetStarted, onAuthOpen }: FeaturesProps = {}) {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.5 }}
-            className="mx-auto mb-12 max-w-2xl text-center sm:mb-16"
+            className="mx-auto mb-12 max-w-4xl text-center sm:mb-16"
           >
             <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-brand-tint px-4 py-2 text-sm font-medium text-primary">
               <Cloud size={14} />
