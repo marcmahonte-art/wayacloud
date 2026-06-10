@@ -131,13 +131,13 @@ export function Hero({ onAuthOpen, onGetStarted }: HeroProps) {
         )}
       </AnimatePresence>
 
-      <div className="absolute inset-x-0 top-0 bottom-[140px] md:bottom-[160px] z-10 flex flex-col justify-center px-6 pt-20 sm:px-10 md:px-20 lg:px-24">
+      <div className="absolute inset-x-0 top-[80px] bottom-[100px] md:bottom-[120px] z-10 flex flex-col justify-center px-6 sm:px-10 md:px-20 lg:px-24">
         <div className="mx-auto w-full max-w-7xl">
           {/* Word 1 - Stocke. */}
           <motion.h1
             className="select-none font-bold leading-[1.1] text-white"
             style={{
-              fontSize: "clamp(2.5rem, 8vw, 6rem)",
+              fontSize: "clamp(2.2rem, min(8vw, 12vh), 6rem)",
             }}
             initial={{ opacity: 0, y: 80 }}
             animate={{ opacity: 1, y: 0 }}
@@ -150,8 +150,8 @@ export function Hero({ onAuthOpen, onGetStarted }: HeroProps) {
           <motion.span
             className="block select-none font-bold leading-[1.1] text-[#FFD0B3]"
             style={{
-              fontSize: "clamp(2.2rem, 7vw, 5.5rem)",
-              marginTop: "clamp(0.2rem, 0.5vw, 0.5rem)",
+              fontSize: "clamp(1.9rem, min(7vw, 10.5vh), 5.5rem)",
+              marginTop: "clamp(0.1rem, min(0.5vw, 0.8vh), 0.4rem)",
               marginLeft: "clamp(0.75rem, 4vw, 3rem)",
             }}
             initial={{ opacity: 0, y: 80 }}
@@ -165,8 +165,8 @@ export function Hero({ onAuthOpen, onGetStarted }: HeroProps) {
           <motion.span
             className="block select-none font-bold leading-[1.1] text-white"
             style={{
-              fontSize: "clamp(2rem, 6vw, 5rem)",
-              marginTop: "clamp(0.2rem, 0.5vw, 0.5rem)",
+              fontSize: "clamp(1.7rem, min(6vw, 9.5vh), 5rem)",
+              marginTop: "clamp(0.1rem, min(0.5vw, 0.8vh), 0.4rem)",
               marginLeft: "clamp(1.5rem, 8vw, 6rem)",
             }}
             initial={{ opacity: 0, y: 80 }}
@@ -178,7 +178,8 @@ export function Hero({ onAuthOpen, onGetStarted }: HeroProps) {
 
           {/* Description */}
           <motion.p
-            className="mt-6 max-w-[540px] text-sm leading-relaxed text-white/90 sm:text-base md:text-lg"
+            className="max-w-[540px] text-sm leading-relaxed text-white/90 sm:text-base md:text-lg"
+            style={{ marginTop: "clamp(0.8rem, 3vh, 1.5rem)" }}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.8 }}
@@ -188,7 +189,8 @@ export function Hero({ onAuthOpen, onGetStarted }: HeroProps) {
 
           {/* CTA Buttons */}
           <motion.div
-            className="mt-6 flex flex-col gap-3 sm:flex-row"
+            className="flex flex-col gap-3 sm:flex-row"
+            style={{ marginTop: "clamp(0.8rem, 3vh, 1.5rem)" }}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 1.0 }}
@@ -210,7 +212,7 @@ export function Hero({ onAuthOpen, onGetStarted }: HeroProps) {
       </div>
 
       {/* Desktop Stats - Glassmorphism Cards */}
-      <div className="absolute bottom-8 left-0 right-0 z-10 hidden px-6 md:flex md:px-10 lg:px-14">
+      <div className="absolute bottom-4 sm:bottom-6 lg:bottom-8 left-0 right-0 z-10 hidden px-6 md:flex md:px-10 lg:px-14">
         <div className="mx-auto flex w-full max-w-7xl justify-between">
           {statCards.map((stat, i) => (
             <motion.div
@@ -218,10 +220,10 @@ export function Hero({ onAuthOpen, onGetStarted }: HeroProps) {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 1.0 + i * 0.15 }}
-              className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur-md"
+              className="rounded-2xl border border-white/10 bg-white/5 p-3 sm:p-4 backdrop-blur-md"
             >
-              <p className="text-2xl font-bold text-white lg:text-3xl">{stat.value}</p>
-              <p className="mt-1 text-[11px] leading-tight text-white/60 lg:text-xs">{stat.label}</p>
+              <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-white">{stat.value}</p>
+              <p className="mt-1 text-[10px] sm:text-[11px] lg:text-xs leading-tight text-white/60">{stat.label}</p>
             </motion.div>
           ))}
         </div>
