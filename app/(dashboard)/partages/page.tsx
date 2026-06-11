@@ -1,6 +1,6 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
-import { Share2, Link, Clock, Download, Globe, Lock } from "lucide-react"
+import { Share2, Link, Clock, Download, Globe, Lock, FileText, FileImage, FileVideo, FileAudio, FileArchive, File } from "lucide-react"
 
 interface ShareLink {
   id: string
@@ -42,13 +42,14 @@ function formatDate(dateStr: string): string {
 }
 
 function getFileIcon(mimeType: string) {
-  if (mimeType?.startsWith("image/")) return "Image"
-  if (mimeType?.startsWith("video/")) return "Video"
-  if (mimeType?.startsWith("audio/")) return "Audio"
-  if (mimeType?.startsWith("text/")) return "Document"
-  if (mimeType?.includes("pdf")) return "PDF"
-  if (mimeType?.includes("zip") || mimeType?.includes("rar") || mimeType?.includes("tar")) return "Archive"
-  return "Fichier"
+  const m = mimeType?.toLowerCase() || ""
+  if (m.startsWith("image/")) return FileImage
+  if (m.startsWith("video/")) return FileVideo
+  if (m.startsWith("audio/")) return FileAudio
+  if (m.includes("pdf")) return FileText
+  if (m.includes("zip") || m.includes("rar") || m.includes("tar")) return FileArchive
+  if (m.startsWith("text/") || m.includes("document") || m.includes("sheet") || m.includes("presentation")) return FileText
+  return File
 }
 
 function getStatus(link: ShareLink): { label: string; color: string } {
@@ -119,10 +120,11 @@ export default async function PartagesPage() {
         <div className="space-y-3">
           {shareLinks.map((link) => {
             const status = getStatus(link)
+            const Icon = getFileIcon(link.file_mime_type)
             return (
               <div key={link.id} className="flex items-center gap-4 rounded-xl border border-[#ECE7DF] bg-white p-4 shadow-sm transition hover:shadow-md">
-                <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#F5F0EB] text-lg">
-                  {getFileIcon(link.file_mime_type)}
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#F5F0EB] text-[#8e8275]">
+                  <Icon size={20} />
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-[14px] font-semibold text-dark">{link.file_name}</p>

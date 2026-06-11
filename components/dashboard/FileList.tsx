@@ -299,7 +299,7 @@ export function FileList({
                       key={file.id}
                       onClick={() => onPreview(file)}
                       className={cn(
-                        "grid grid-cols-[40px_1fr_80px_100px_120px_36px] gap-3 px-4 py-3 items-center hover:bg-[#fdfcfb] cursor-pointer transition group",
+                        "grid grid-cols-[40px_1fr_36px] sm:grid-cols-[40px_1fr_80px_100px_120px_36px] gap-3 px-4 py-3 items-center hover:bg-[#fdfcfb] cursor-pointer transition group",
                         isChecked && "bg-primary/[0.02]",
                       )}
                     >
@@ -313,13 +313,20 @@ export function FileList({
                         <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${iconColor}`}>
                           <Icon size={16} />
                         </span>
-                        <span className="truncate text-[13px] font-semibold text-[#1c1b1b]">{file.name}</span>
-                        {file.is_favorite && <Star size={12} className="text-yellow-500 shrink-0" fill="currentColor" />}
+                        <div className="flex flex-col min-w-0">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <span className="truncate text-[13px] font-semibold text-[#1c1b1b]">{file.name}</span>
+                            {file.is_favorite && <Star size={12} className="text-yellow-500 shrink-0" fill="currentColor" />}
+                          </div>
+                          <span className="text-[11px] text-[#69708a] font-medium sm:hidden mt-0.5">
+                            {formatFileSize(file.size_bytes)} · {formatFileDate(file.updated_at || file.created_at)}
+                          </span>
+                        </div>
                       </div>
 
                       <div className="text-[11px] text-[#596077] font-semibold uppercase hidden sm:block truncate">{ext || "FICHIER"}</div>
-                      <div className="text-[13px] text-[#596077] font-medium">{formatFileSize(file.size_bytes)}</div>
-                      <div className="text-[12px] text-[#69708a]">{formatFileDate(file.updated_at || file.created_at)}</div>
+                      <div className="text-[13px] text-[#596077] font-medium hidden sm:block">{formatFileSize(file.size_bytes)}</div>
+                      <div className="text-[12px] text-[#69708a] hidden sm:block">{formatFileDate(file.updated_at || file.created_at)}</div>
 
                       <div className="flex items-center justify-end">
                         <FileKebabMenu file={file} isFavorite={file.is_favorite} onAction={onKebabAction} />

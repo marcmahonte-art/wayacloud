@@ -80,7 +80,7 @@ export default function TrashPage() {
                 return (
                   <div
                     key={file.id}
-                    className="grid grid-cols-[1fr_120px_140px_120px] gap-3 px-4 py-3 items-center hover:bg-[#fdfcfb] transition group"
+                    className="grid grid-cols-[1fr_auto_auto] sm:grid-cols-[1fr_120px_140px_120px] gap-3 px-4 py-3 items-center hover:bg-[#fdfcfb] transition group"
                   >
                     <div className="flex items-center gap-3 min-w-0">
                       <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-red-100 text-red-600">
@@ -88,21 +88,25 @@ export default function TrashPage() {
                       </span>
                       <div className="min-w-0">
                         <p className="truncate text-[13px] font-semibold text-[#1c1b1b]">{file.name}</p>
-                        <p className="text-[11px] text-[#69708a] font-medium">{formatFileSize(file.size_bytes)}</p>
+                        <p className="text-[11px] text-[#69708a] font-medium">
+                          {formatFileSize(file.size_bytes)}
+                          <span className="sm:hidden"> · {formatFileDate(file.updated_at || file.created_at)}</span>
+                        </p>
                       </div>
                     </div>
 
-                    <div className="text-[12px] text-[#69708a]">
+                    <div className="text-[12px] text-[#69708a] hidden sm:block">
                       {formatFileDate(file.updated_at || file.created_at)}
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 justify-end sm:justify-start">
                       <button
                         onClick={() => handleRestore(file.id)}
                         className="flex items-center gap-1.5 rounded-lg border border-[#ece7df] bg-white px-3 py-1.5 text-[11px] font-bold text-[#1c1b1b] hover:bg-[#f5f3f0] transition-colors"
+                        title="Restaurer"
                       >
                         <RotateCcw size={13} />
-                        Restaurer
+                        <span className="hidden sm:inline">Restaurer</span>
                       </button>
                     </div>
 
@@ -110,9 +114,10 @@ export default function TrashPage() {
                       <button
                         onClick={() => setConfirmDelete(file.id)}
                         className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] font-bold text-red-600 hover:bg-red-50 transition-colors"
+                        title="Supprimer définitivement"
                       >
                         <Trash2 size={13} />
-                        Supprimer
+                        <span className="hidden sm:inline">Supprimer</span>
                       </button>
                     </div>
                   </div>
